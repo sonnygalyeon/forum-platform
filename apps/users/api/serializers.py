@@ -178,3 +178,27 @@ class LoginSerializer(TokenObtainPairSerializer):
 
 class LogoutSerializer(serializers.Serializer):
     refresh = serializers.CharField()
+
+
+class UserProfileSerializer(UserPublicSerializer):
+    follower_count = serializers.IntegerField(
+        read_only=True,
+    )
+
+    following_count = serializers.IntegerField(
+        read_only=True,
+    )
+
+    is_following = serializers.BooleanField(
+        read_only=True,
+    )
+
+    class Meta(UserPublicSerializer.Meta):
+        fields = (
+            UserPublicSerializer.Meta.fields
+            + [
+                "follower_count",
+                "following_count",
+                "is_following",
+            ]
+        )

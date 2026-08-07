@@ -12,12 +12,14 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 
 import os
 
+
 from pathlib import Path
 from datetime import timedelta
 
+from dotenv import load_dotenv
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
-
+load_dotenv(BASE_DIR / ".env")
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
@@ -47,6 +49,7 @@ ALLOWED_HOSTS = [
 # Application definition
 
 INSTALLED_APPS = [
+    # Django
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -54,11 +57,15 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
 
+    # Third-party
     "rest_framework",
     "rest_framework_simplejwt.token_blacklist",
 
+    # Project
     "apps.core",
     "apps.users",
+    "apps.communities",
+    "apps.social",
 ]
 
 REST_FRAMEWORK = {

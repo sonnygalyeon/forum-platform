@@ -9,6 +9,9 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 
 from apps.users.models import User
 from apps.users.services import create_token_pair
+from apps.social.selectors import (
+    user_profile_queryset,
+)
 
 from .serializers import (
     LoginSerializer,
@@ -16,6 +19,7 @@ from .serializers import (
     RegisterSerializer,
     UserMeSerializer,
     UserPublicSerializer,
+    UserProfileSerializer,
 )
 
 class RegisterView(APIView):
@@ -93,4 +97,19 @@ class LogoutView(APIView):
 
         return Response(
             status=status.HTTP_204_NO_CONTENT
+        )
+
+class UserDetailView(
+    generics.RetrieveAPIView
+):
+    permission_classes = [AllowAny]
+
+    serializer_class = UserProfileSerializer
+
+    lookup_field = "public_id"
+    lookup_url_kwarg = "user_id"
+
+    def get_queryset(self):
+        return user_profile_queryset(
+            self.request.user
         )
