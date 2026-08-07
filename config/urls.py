@@ -9,4 +9,9 @@ urlpatterns = [
         "api/v1/",
         include("apps.core.urls"),
     ),
+
+    path(
+        "api/v1/",
+        include("apps.users.api.urls"),
+    ),
 ]

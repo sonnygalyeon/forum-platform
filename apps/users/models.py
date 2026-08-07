@@ -8,6 +8,9 @@ from django.db.models.functions import Lower
 class UserManager(BaseUserManager):
     use_in_migrations = True
 
+    def get_by_natural_key(self, nickname):
+        return self.get(nickname__iexact=nickname)
+
     def create_user(
         self,
         nickname,
@@ -22,7 +25,7 @@ class UserManager(BaseUserManager):
             raise ValueError("Email is required")
 
         nickname = nickname.strip()
-        email = self.normalize_email(email)
+        email = self.normalize_email(email).lower()
 
         user = self.model(
             nickname=nickname,
@@ -47,10 +50,14 @@ class UserManager(BaseUserManager):
         extra_fields.setdefault("is_active", True)
 
         if extra_fields.get("is_staff") is not True:
-            raise ValueError("Superuser must have is_staff=True")
+            raise ValueError(
+                "Superuser must have is_staff=True"
+            )
 
         if extra_fields.get("is_superuser") is not True:
-            raise ValueError("Superuser must have is_superuser=True")
+            raise ValueError(
+                "Superuser must have is_superuser=True"
+            )
 
         return self.create_user(
             nickname=nickname,
@@ -117,6 +124,10 @@ class User(AbstractUser):
             models.UniqueConstraint(
                 Lower("nickname"),
                 name="users_nickname_case_insensitive_unique",
+            ),
+            models.UniqueConstraint(
+                Lower("email"),
+                name="users_email_case_insensitive_unique",
             ),
         ]
 
