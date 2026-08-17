@@ -8,11 +8,18 @@ class ReportCreateSerializer(serializers.Serializer):
     target_type = serializers.ChoiceField(choices=Report.TargetType.choices)
     target_id = serializers.UUIDField()
     reason = serializers.ChoiceField(choices=Report.Reason.choices)
-    details = serializers.CharField(max_length=5000, allow_blank=True, required=False, default="")
+    details = serializers.CharField(
+        max_length=5000,
+        allow_blank=True,
+        required=False,
+        default="",
+    )
 
     def validate(self, attrs):
         if attrs["reason"] == Report.Reason.OTHER and not attrs.get("details", "").strip():
-            raise serializers.ValidationError({"details": "Details are required for reason=other."})
+            raise serializers.ValidationError(
+                {"details": "Details are required for reason=other."}
+            )
         return attrs
 
 
@@ -39,7 +46,7 @@ class ReportSerializer(serializers.ModelSerializer):
             "resolved_at",
         ]
 
-    def get_target_id(self, obj):
+    def get_target_id(self, obj) -> str | None:
         target = {
             Report.TargetType.PUBLICATION: obj.publication,
             Report.TargetType.COMMENT: obj.comment,
@@ -50,12 +57,33 @@ class ReportSerializer(serializers.ModelSerializer):
 
 class ReportStatusSerializer(serializers.Serializer):
     status = serializers.ChoiceField(choices=Report.Status.choices)
-    resolution_note = serializers.CharField(max_length=5000, allow_blank=True, required=False, default="")
+    resolution_note = serializers.CharField(
+        max_length=5000,
+        allow_blank=True,
+        required=False,
+        default="",
+    )
 
 
 class ModerationTargetSerializer(serializers.Serializer):
-    reason = serializers.CharField(max_length=5000, allow_blank=True, required=False, default="")
+    reason = serializers.CharField(
+        max_length=5000,
+        allow_blank=True,
+        required=False,
+        default="",
+    )
     report_id = serializers.UUIDField(required=False, allow_null=True)
+
+
+class ModerationPublicationVisibilitySerializer(serializers.Serializer):
+    visibility = serializers.CharField()
+    changed = serializers.BooleanField()
+
+
+class ModerationCommentVisibilitySerializer(serializers.Serializer):
+    visibility = serializers.CharField()
+    is_accepted = serializers.BooleanField()
+    changed = serializers.BooleanField()
 
 
 class ModerationActionSerializer(serializers.ModelSerializer):
@@ -77,9 +105,9 @@ class ModerationActionSerializer(serializers.ModelSerializer):
             "created_at",
         ]
 
-    def get_target_id(self, obj):
+    def get_target_id(self, obj) -> str | None:
         target = obj.publication if obj.target_type == "publication" else obj.comment
         return str(target.public_id) if target else None
 
-    def get_report_id(self, obj):
+    def get_report_id(self, obj) -> str | None:
         return str(obj.report.public_id) if obj.report_id else None

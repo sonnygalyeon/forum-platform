@@ -1,4 +1,5 @@
 from django.core.exceptions import ValidationError as DjangoValidationError
+from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 from apps.communities.models import Community
 from apps.publications.content import validate_content_blocks
@@ -93,16 +94,26 @@ class PublicationListSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
-    def get_excerpt(self, obj):
+    def get_excerpt(self, obj) -> str:
         return obj.content_text if len(obj.content_text) <= 300 else obj.content_text[:300].rstrip() + "…"
-    def get_is_edited(self, obj):
+    def get_is_edited(self, obj) -> bool:
         return obj.current_revision > 1
 
-    def get_should_collapse_author_content(self, obj):
+    def get_should_collapse_author_content(self, obj) -> bool:
         return bool(
             getattr(obj, "is_author_blocked", False)
             or getattr(obj, "is_author_muted", False)
         )
+
+
+class PublicationMediaItemSerializer(serializers.Serializer):
+    asset_id = serializers.UUIDField()
+    role = serializers.CharField()
+    sort_order = serializers.IntegerField(min_value=0)
+    name = serializers.CharField()
+    kind = serializers.CharField()
+    size_bytes = serializers.IntegerField(min_value=0)
+    status = serializers.CharField()
 
 
 class PublicationDetailSerializer(PublicationListSerializer):
@@ -117,10 +128,10 @@ class PublicationDetailSerializer(PublicationListSerializer):
             "can_interact",
         ]
 
-    def get_can_edit(self, obj):
+    def get_can_edit(self, obj) -> bool:
         request = self.context.get("request")
         return bool(request and request.user.is_authenticated and request.user.pk == obj.author_id)
-    def get_can_interact(self, obj):
+    def get_can_interact(self, obj) -> bool:
         request = self.context.get("request")
         return bool(
             request
@@ -128,7 +139,8 @@ class PublicationDetailSerializer(PublicationListSerializer):
             and not getattr(obj, "interaction_blocked", False)
         )
 
-    def get_media(self, obj):
+    @extend_schema_field(PublicationMediaItemSerializer(many=True))
+    def get_media(self, obj) -> list[dict]:
         return [
             {
                 "asset_id": str(link.asset.public_id),

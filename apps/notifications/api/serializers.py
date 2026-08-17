@@ -1,7 +1,20 @@
+from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
 from apps.notifications.models import Notification, NotificationPreference
 from apps.users.api.serializers import UserPublicSerializer
+
+
+class NotificationPublicationSerializer(serializers.Serializer):
+    id = serializers.UUIDField()
+    type = serializers.CharField()
+    title = serializers.CharField(allow_blank=True)
+
+
+class NotificationCommentSerializer(serializers.Serializer):
+    id = serializers.UUIDField()
+    kind = serializers.CharField()
+    excerpt = serializers.CharField()
 
 
 class NotificationSerializer(serializers.ModelSerializer):
@@ -26,10 +39,11 @@ class NotificationSerializer(serializers.ModelSerializer):
             "created_at",
         ]
 
-    def get_is_read(self, obj):
+    def get_is_read(self, obj) -> bool:
         return obj.read_at is not None
 
-    def get_publication(self, obj):
+    @extend_schema_field(NotificationPublicationSerializer(allow_null=True))
+    def get_publication(self, obj) -> dict | None:
         if obj.publication is None:
             return None
         return {
@@ -38,7 +52,8 @@ class NotificationSerializer(serializers.ModelSerializer):
             "title": obj.publication.title,
         }
 
-    def get_comment(self, obj):
+    @extend_schema_field(NotificationCommentSerializer(allow_null=True))
+    def get_comment(self, obj) -> dict | None:
         if obj.comment is None:
             return None
         return {
@@ -47,7 +62,7 @@ class NotificationSerializer(serializers.ModelSerializer):
             "excerpt": obj.comment.content_text[:160],
         }
 
-    def get_report_id(self, obj):
+    def get_report_id(self, obj) -> str | None:
         return str(obj.report.public_id) if obj.report else None
 
 

@@ -37,7 +37,7 @@ api-validate:
 	docker compose run --rm api sh scripts/validate_api.sh
 
 schema:
-	docker compose run --rm api python manage.py spectacular --file /tmp/forum-openapi.yml --validate
+	docker compose run --rm api python manage.py spectacular --file /tmp/forum-openapi.yml --validate --fail-on-warn
 
 smoke:
 	sh scripts/smoke_api.sh

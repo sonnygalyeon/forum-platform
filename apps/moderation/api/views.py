@@ -1,4 +1,5 @@
 from django.shortcuts import get_object_or_404
+from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework import generics, serializers, status
 from rest_framework.permissions import IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
@@ -17,6 +18,8 @@ from apps.users.models import User
 
 from .serializers import (
     ModerationActionSerializer,
+    ModerationCommentVisibilitySerializer,
+    ModerationPublicationVisibilitySerializer,
     ModerationTargetSerializer,
     ReportCreateSerializer,
     ReportSerializer,
@@ -24,6 +27,13 @@ from .serializers import (
 )
 
 
+@extend_schema_view(
+    post=extend_schema(
+        request=ReportCreateSerializer,
+        responses={201: ReportSerializer},
+        summary="Create report",
+    )
+)
 class ReportCreateView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -99,6 +109,14 @@ class ModerationReportListView(generics.ListAPIView):
         return queryset
 
 
+@extend_schema_view(
+    get=extend_schema(responses={200: ReportSerializer}, summary="Get moderation report"),
+    patch=extend_schema(
+        request=ReportStatusSerializer,
+        responses={200: ReportSerializer},
+        summary="Update moderation report status",
+    ),
+)
 class ModerationReportDetailView(APIView):
     permission_classes = [IsAdminUser]
 
@@ -135,6 +153,18 @@ def _resolve_report(report_id):
     return get_object_or_404(Report, public_id=report_id)
 
 
+@extend_schema_view(
+    put=extend_schema(
+        request=ModerationTargetSerializer,
+        responses={200: ModerationPublicationVisibilitySerializer},
+        summary="Hide publication",
+    ),
+    delete=extend_schema(
+        request=ModerationTargetSerializer,
+        responses={200: ModerationPublicationVisibilitySerializer},
+        summary="Restore publication",
+    ),
+)
 class ModerationPublicationHiddenView(APIView):
     permission_classes = [IsAdminUser]
 
@@ -174,6 +204,18 @@ class ModerationPublicationHiddenView(APIView):
         return Response({"visibility": publication.visibility, "changed": changed})
 
 
+@extend_schema_view(
+    put=extend_schema(
+        request=ModerationTargetSerializer,
+        responses={200: ModerationCommentVisibilitySerializer},
+        summary="Hide comment",
+    ),
+    delete=extend_schema(
+        request=ModerationTargetSerializer,
+        responses={200: ModerationCommentVisibilitySerializer},
+        summary="Restore comment",
+    ),
+)
 class ModerationCommentHiddenView(APIView):
     permission_classes = [IsAdminUser]
 

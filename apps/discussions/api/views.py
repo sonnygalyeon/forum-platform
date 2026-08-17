@@ -1,4 +1,5 @@
 from django.shortcuts import get_object_or_404
+from drf_spectacular.utils import extend_schema, extend_schema_view, inline_serializer
 from rest_framework import generics, serializers, status
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -29,6 +30,22 @@ from .serializers import (
 )
 
 
+VoteResultSerializer = inline_serializer(
+    name="CommentVoteResult",
+    fields={
+        "score": serializers.IntegerField(),
+        "my_vote": serializers.IntegerField(allow_null=True),
+    },
+)
+
+AcceptedAnswerResponseSerializer = inline_serializer(
+    name="AcceptedAnswerResponse",
+    fields={
+        "accepted_answer": CommentSerializer(allow_null=True),
+    },
+)
+
+
 class PublicationCommentListCreateView(generics.ListAPIView):
     permission_classes = [AllowAny]
     serializer_class = CommentSerializer
@@ -45,6 +62,7 @@ class PublicationCommentListCreateView(generics.ListAPIView):
             visibility=Comment.Visibility.PUBLISHED,
         )
 
+    @extend_schema(request=CommentCreateSerializer, responses={201: CommentSerializer})
     def post(self, request, *args, **kwargs):
         if not request.user.is_authenticated:
             self.permission_denied(request)
@@ -95,6 +113,7 @@ class CommentRepliesView(generics.ListAPIView):
             visibility=Comment.Visibility.PUBLISHED,
         )
 
+    @extend_schema(request=CommentCreateSerializer, responses={201: CommentSerializer})
     def post(self, request, *args, **kwargs):
         if not request.user.is_authenticated:
             self.permission_denied(request)
@@ -122,6 +141,14 @@ class CommentRepliesView(generics.ListAPIView):
         )
 
 
+@extend_schema_view(
+    get=extend_schema(responses={200: CommentSerializer}, summary="Get comment"),
+    patch=extend_schema(
+        request=CommentUpdateSerializer,
+        responses={200: CommentSerializer},
+        summary="Edit comment",
+    ),
+)
 class CommentDetailView(APIView):
     permission_classes = [AllowAny]
 
@@ -168,6 +195,18 @@ class CommentDetailView(APIView):
         )
 
 
+@extend_schema_view(
+    put=extend_schema(
+        request=CommentVoteSerializer,
+        responses={200: VoteResultSerializer},
+        summary="Set or change comment vote",
+    ),
+    delete=extend_schema(
+        request=None,
+        responses={200: VoteResultSerializer},
+        summary="Remove comment vote",
+    ),
+)
 class CommentVoteView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -252,6 +291,18 @@ class UserCommentsView(generics.ListAPIView):
             publication__visibility=Publication.Visibility.PUBLISHED,
         )
 
+@extend_schema_view(
+    put=extend_schema(
+        request=None,
+        responses={200: CommentSerializer},
+        summary="Accept topic answer",
+    ),
+    delete=extend_schema(
+        request=None,
+        responses={200: CommentSerializer},
+        summary="Unaccept topic answer",
+    ),
+)
 class CommentAcceptedView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -304,6 +355,12 @@ class CommentAcceptedView(APIView):
         )
 
 
+@extend_schema_view(
+    get=extend_schema(
+        responses={200: AcceptedAnswerResponseSerializer},
+        summary="Get accepted answer for topic",
+    )
+)
 class PublicationAcceptedAnswerView(APIView):
     permission_classes = [AllowAny]
 

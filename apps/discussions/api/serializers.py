@@ -107,10 +107,10 @@ class CommentSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
 
-    def get_is_edited(self, obj):
+    def get_is_edited(self, obj) -> bool:
         return obj.current_revision > 1
 
-    def get_can_edit(self, obj):
+    def get_can_edit(self, obj) -> bool:
         request = self.context.get("request")
         return bool(
             request
@@ -118,7 +118,7 @@ class CommentSerializer(serializers.ModelSerializer):
             and obj.author_id == request.user.pk
         )
 
-    def get_can_vote(self, obj):
+    def get_can_vote(self, obj) -> bool:
         request = self.context.get("request")
         return bool(
             request
@@ -128,7 +128,7 @@ class CommentSerializer(serializers.ModelSerializer):
             and not getattr(obj, "interaction_blocked", False)
         )
 
-    def _can_manage_acceptance(self, obj):
+    def _can_manage_acceptance(self, obj) -> bool:
         request = self.context.get("request")
         return bool(
             request
@@ -142,16 +142,16 @@ class CommentSerializer(serializers.ModelSerializer):
             and not getattr(obj, "interaction_blocked", False)
         )
 
-    def get_should_collapse_author_content(self, obj):
+    def get_should_collapse_author_content(self, obj) -> bool:
         return bool(
             getattr(obj, "is_author_blocked", False)
             or getattr(obj, "is_author_muted", False)
         )
 
-    def get_can_accept(self, obj):
+    def get_can_accept(self, obj) -> bool:
         return self._can_manage_acceptance(obj) and not obj.is_accepted
 
-    def get_can_unaccept(self, obj):
+    def get_can_unaccept(self, obj) -> bool:
         return self._can_manage_acceptance(obj) and obj.is_accepted
 
 

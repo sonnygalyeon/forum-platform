@@ -1,4 +1,5 @@
 from django.shortcuts import get_object_or_404
+from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework import generics, serializers, status
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
@@ -23,6 +24,10 @@ from .serializers import (
 )
 
 
+@extend_schema_view(
+    put=extend_schema(request=None, responses={204: None}, summary="Follow user"),
+    delete=extend_schema(request=None, responses={204: None}, summary="Unfollow user"),
+)
 class UserFollowView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -45,6 +50,10 @@ class UserFollowView(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
+@extend_schema_view(
+    put=extend_schema(request=None, responses={204: None}, summary="Block user"),
+    delete=extend_schema(request=None, responses={204: None}, summary="Unblock user"),
+)
 class UserBlockView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -63,6 +72,10 @@ class UserBlockView(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
+@extend_schema_view(
+    put=extend_schema(request=None, responses={204: None}, summary="Mute user"),
+    delete=extend_schema(request=None, responses={204: None}, summary="Unmute user"),
+)
 class UserMuteView(APIView):
     permission_classes = [IsAuthenticated]
 

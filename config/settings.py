@@ -190,13 +190,19 @@ CORS_ALLOW_CREDENTIALS = False
 SPECTACULAR_SETTINGS = {
     "TITLE": "Forum Platform API",
     "DESCRIPTION": "Stable API contract for Forum Platform Web, Android and iOS clients.",
-    "VERSION": "0.7.1",
+    "VERSION": "0.7.2",
     "SERVE_INCLUDE_SCHEMA": False,
     "OAS_VERSION": "3.1.0",
     "COMPONENT_SPLIT_REQUEST": True,
     "SWAGGER_UI_DIST": "SIDECAR",
     "SWAGGER_UI_FAVICON_HREF": "SIDECAR",
     "REDOC_DIST": "SIDECAR",
+    "ENUM_NAME_OVERRIDES": {
+        "PublicationKindEnum": "apps.publications.models.Publication.Type.choices",
+        "CommentKindEnum": "apps.discussions.models.Comment.Kind.choices",
+        "MediaAssetKindEnum": "apps.media.models.MediaAsset.Kind.choices",
+        "NotificationKindEnum": "apps.notifications.models.NotificationEvent.Kind.choices",
+    },
     "SWAGGER_UI_SETTINGS": {
         "persistAuthorization": True,
         "displayRequestDuration": True,

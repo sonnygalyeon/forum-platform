@@ -1,4 +1,4 @@
-# Forum Platform 0.7.1 — Stage 7.2
+# Forum Platform 0.7.2 — Stage 7.2
 
 Stage 7.2 freezes the backend contract before Web frontend development.
 

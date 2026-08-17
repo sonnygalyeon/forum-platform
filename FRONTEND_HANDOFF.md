@@ -1,6 +1,6 @@
 # Frontend handoff
 
-Backend baseline: Forum Platform `0.7.1`, API `v1`.
+Backend baseline: Forum Platform `0.7.2`, API `v1`.
 
 Before implementation of the Web UI, define the visual system first: references, dark/light behavior, color palette, typography, card density, navigation model, publication layout, discussion layout, profile layout, media presentation and responsive behavior.
 
