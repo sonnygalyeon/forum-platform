@@ -30,6 +30,7 @@ INSTALLED_APPS = [
     "apps.social",
     "apps.publications",
     "apps.media",
+    "apps.discussions",
 ]
 
 MIDDLEWARE = [
