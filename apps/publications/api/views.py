@@ -11,10 +11,13 @@ from .serializers import PublicationCreateSerializer, PublicationDetailSerialize
 class PublicationListCreateView(generics.ListCreateAPIView):
     permission_classes = [IsAuthenticatedOrReadOnly]
     def get_queryset(self):
-        queryset = publication_queryset()
+        author_id = self.request.query_params.get("author")
+        queryset = publication_queryset(
+            self.request.user,
+            hide_muted=not bool(author_id),
+        )
         publication_type = self.request.query_params.get("type")
         community_id = self.request.query_params.get("community")
-        author_id = self.request.query_params.get("author")
         tag = self.request.query_params.get("tag")
         if publication_type:
             queryset = queryset.filter(kind=publication_type)
@@ -35,7 +38,7 @@ class PublicationListCreateView(generics.ListCreateAPIView):
             author=request.user, kind=data["type"], title=data["title"], content=data["content"],
             community=data["community"], tag_names=data["tags"],
         )
-        publication = publication_queryset().get(pk=publication.pk)
+        publication = publication_queryset(request.user).get(pk=publication.pk)
         return Response(PublicationDetailSerializer(publication, context={"request": request}).data, status=status.HTTP_201_CREATED)
 
 class PublicationDetailView(mixins.RetrieveModelMixin, mixins.UpdateModelMixin, generics.GenericAPIView):
@@ -43,7 +46,7 @@ class PublicationDetailView(mixins.RetrieveModelMixin, mixins.UpdateModelMixin, 
     lookup_field = "public_id"
     lookup_url_kwarg = "publication_id"
     def get_queryset(self):
-        return publication_queryset()
+        return publication_queryset(self.request.user)
     def get_serializer_class(self):
         return PublicationUpdateSerializer if self.request.method == "PATCH" else PublicationDetailSerializer
     def get(self, request, *args, **kwargs):
@@ -56,7 +59,7 @@ class PublicationDetailView(mixins.RetrieveModelMixin, mixins.UpdateModelMixin, 
         if "tags" in changes:
             changes["tag_names"] = changes.pop("tags")
         publication = update_publication(publication=publication, editor=request.user, changes=changes)
-        publication = publication_queryset().get(pk=publication.pk)
+        publication = publication_queryset(request.user).get(pk=publication.pk)
         return Response(PublicationDetailSerializer(publication, context={"request": request}).data)
 
 class PublicationRevisionListView(generics.ListAPIView):

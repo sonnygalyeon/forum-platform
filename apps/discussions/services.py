@@ -3,6 +3,7 @@ from django.db import IntegrityError, transaction
 from apps.discussions.content import extract_comment_text
 from apps.discussions.models import Comment, CommentRevision, CommentVote
 from apps.publications.models import Publication
+from apps.social.services import users_have_block_between
 
 
 MAX_COMMENT_DEPTH = 8
@@ -27,6 +28,9 @@ def create_root_comment(*, publication, author, content):
 
     if publication.visibility != Publication.Visibility.PUBLISHED:
         raise ValueError("Publication is not available.")
+
+    if users_have_block_between(author, publication.author):
+        raise ValueError("Interaction is unavailable because a user block is active.")
 
     if publication.kind == Publication.Type.TOPIC:
         kind = Comment.Kind.ANSWER
@@ -68,6 +72,12 @@ def create_reply(*, parent, author, content):
 
     if parent.publication.visibility != Publication.Visibility.PUBLISHED:
         raise ValueError("Publication is not available.")
+
+    if users_have_block_between(author, parent.author):
+        raise ValueError("Interaction is unavailable because a user block is active.")
+
+    if users_have_block_between(author, parent.publication.author):
+        raise ValueError("Interaction is unavailable on a blocked user's publication.")
 
     depth = parent.depth + 1
     if depth > MAX_COMMENT_DEPTH:
@@ -141,6 +151,9 @@ def set_comment_vote(*, comment, user, value):
 
     if comment.author_id == user.pk:
         raise ValueError("You cannot vote for your own comment.")
+
+    if users_have_block_between(user, comment.author):
+        raise ValueError("Interaction is unavailable because a user block is active.")
 
     vote = (
         CommentVote.objects
@@ -234,6 +247,9 @@ def accept_answer(*, answer, actor):
 
     if answer.visibility != Comment.Visibility.PUBLISHED:
         raise ValueError("A hidden answer cannot be accepted.")
+
+    if users_have_block_between(actor, answer.author):
+        raise ValueError("A blocked user's answer cannot be accepted while the block is active.")
 
     previous = (
         Comment.objects

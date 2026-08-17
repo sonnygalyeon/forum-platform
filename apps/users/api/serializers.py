@@ -21,9 +21,18 @@ class UserMeSerializer(serializers.ModelSerializer):
 class UserProfileSerializer(UserPublicSerializer):
     follower_count = serializers.IntegerField(read_only=True)
     following_count = serializers.IntegerField(read_only=True)
-    is_following = serializers.BooleanField(read_only=True)
+    is_following = serializers.BooleanField(read_only=True, default=False)
+    is_blocked = serializers.BooleanField(read_only=True, default=False)
+    is_muted = serializers.BooleanField(read_only=True, default=False)
+
     class Meta(UserPublicSerializer.Meta):
-        fields = UserPublicSerializer.Meta.fields + ["follower_count", "following_count", "is_following"]
+        fields = UserPublicSerializer.Meta.fields + [
+            "follower_count",
+            "following_count",
+            "is_following",
+            "is_blocked",
+            "is_muted",
+        ]
 
 nickname_validator = UnicodeUsernameValidator()
 

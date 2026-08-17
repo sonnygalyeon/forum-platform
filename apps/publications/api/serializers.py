@@ -71,22 +71,63 @@ class PublicationListSerializer(serializers.ModelSerializer):
     excerpt = serializers.SerializerMethodField()
     revision = serializers.IntegerField(source="current_revision", read_only=True)
     is_edited = serializers.SerializerMethodField()
+    is_author_blocked = serializers.BooleanField(read_only=True, default=False)
+    is_author_muted = serializers.BooleanField(read_only=True, default=False)
+    should_collapse_author_content = serializers.SerializerMethodField()
+
     class Meta:
         model = Publication
-        fields = ["id", "type", "title", "excerpt", "author", "community", "tags", "revision", "is_edited", "created_at", "updated_at"]
+        fields = [
+            "id",
+            "type",
+            "title",
+            "excerpt",
+            "author",
+            "community",
+            "tags",
+            "revision",
+            "is_edited",
+            "is_author_blocked",
+            "is_author_muted",
+            "should_collapse_author_content",
+            "created_at",
+            "updated_at",
+        ]
     def get_excerpt(self, obj):
         return obj.content_text if len(obj.content_text) <= 300 else obj.content_text[:300].rstrip() + "…"
     def get_is_edited(self, obj):
         return obj.current_revision > 1
 
+    def get_should_collapse_author_content(self, obj):
+        return bool(
+            getattr(obj, "is_author_blocked", False)
+            or getattr(obj, "is_author_muted", False)
+        )
+
+
 class PublicationDetailSerializer(PublicationListSerializer):
     can_edit = serializers.SerializerMethodField()
+    can_interact = serializers.SerializerMethodField()
     media = serializers.SerializerMethodField()
     class Meta(PublicationListSerializer.Meta):
-        fields = PublicationListSerializer.Meta.fields + ["content", "media", "can_edit"]
+        fields = PublicationListSerializer.Meta.fields + [
+            "content",
+            "media",
+            "can_edit",
+            "can_interact",
+        ]
+
     def get_can_edit(self, obj):
         request = self.context.get("request")
         return bool(request and request.user.is_authenticated and request.user.pk == obj.author_id)
+    def get_can_interact(self, obj):
+        request = self.context.get("request")
+        return bool(
+            request
+            and request.user.is_authenticated
+            and not getattr(obj, "interaction_blocked", False)
+        )
+
     def get_media(self, obj):
         return [
             {

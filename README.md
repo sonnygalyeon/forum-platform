@@ -1,96 +1,118 @@
-# Forum Platform 0.6.0 — Stage 6.1
+# Forum Platform 0.6.1 — Stage 6.2
 
 API-first forum backend built with Django REST Framework, PostgreSQL and S3-compatible object storage.
 
-## Stage 6.1 adds moderation and reporting
+## Stage 6.2 adds user block / mute
 
-- authenticated users can report publications, comments and user profiles;
-- duplicate active reports for the same reporter/target are prevented in PostgreSQL;
-- moderation queue for staff users;
-- report lifecycle: `open -> reviewing -> resolved/dismissed`;
-- moderators can hide/unhide publications and comments without physical deletion;
-- every hide/unhide is recorded in immutable `ModerationAction` audit history;
-- optionally link a moderation action to the report that caused it;
-- hiding an accepted answer automatically clears `is_accepted` so another visible answer can be accepted;
-- hidden comments/revisions are no longer readable through public direct-UUID endpoints.
+Everything from Stage 6.1 remains included: JWT auth, communities/follows, publications and immutable revisions, multipart MinIO/S3 media, discussions, votes, accepted answers, reports and moderation audit history.
 
-Everything from 5.3 remains included: JWT, communities/follows, publications/revisions, MinIO multipart media, discussions, votes and accepted answers.
+New behavior:
 
-## Upgrade from 5.3
+- `block`: a strong two-way interaction barrier;
+- `mute`: a local visibility preference only;
+- blocking automatically removes follow edges in both directions;
+- blocked users cannot follow each other while the block exists;
+- block prevents new direct discussion interaction: root comment/answer on the blocked user's publication, direct reply, comment vote and accepting that user's answer;
+- `mute` does **not** prevent follows or interaction;
+- muted authors are filtered from the general publication feed for that viewer;
+- direct profile/URL access remains available;
+- old content from blocked/muted users is not physically removed. API marks it with relation flags so clients can collapse it instead of pretending it never existed.
 
-The archive adds a new app and migration:
+## Migration
+
+Stage 6.2 adds:
 
 ```text
-apps/moderation/migrations/0001_initial.py
+apps/social/migrations/0002_userblock_usermute.py
 ```
 
-If 5.3 is already migrated:
+Upgrade an already migrated Stage 6.1 database:
 
 ```bash
 docker compose build api
 docker compose run --rm api python manage.py migrate
 docker compose run --rm api python manage.py check
-docker compose run --rm api python manage.py test apps.moderation apps.discussions
+docker compose run --rm api python manage.py test apps.social apps.discussions apps.moderation
 ```
 
-Do not recreate old migrations.
+Do **not** recreate old migrations.
 
-## Report API
+## Block API
 
 ```text
-POST /api/v1/reports/
-GET  /api/v1/reports/mine/
+PUT    /api/v1/users/{user_uuid}/block/
+DELETE /api/v1/users/{user_uuid}/block/
+GET    /api/v1/users/me/blocks/
 ```
 
-Example:
+`PUT` and `DELETE` are idempotent.
+
+Blocking yourself returns `400`.
+
+A block also deletes existing follow relationships in both directions. Unblocking does not restore them automatically.
+
+## Mute API
+
+```text
+PUT    /api/v1/users/{user_uuid}/mute/
+DELETE /api/v1/users/{user_uuid}/mute/
+GET    /api/v1/users/me/mutes/
+```
+
+Mute is one-directional and local. The muted user is not prevented from following, replying or otherwise using the forum.
+
+## Profile relation flags
+
+`GET /api/v1/users/{uuid}/` now includes viewer-relative fields:
 
 ```json
 {
-  "target_type": "publication",
-  "target_id": "PUBLIC_UUID",
-  "reason": "spam",
-  "details": "Optional explanation"
+  "is_following": false,
+  "is_blocked": true,
+  "is_muted": false
 }
 ```
 
-Supported targets:
+`is_blocked` means **the current viewer has blocked this profile**. The API does not expose a separate "this user blocked you" profile flag.
 
-```text
-publication
-comment
-user
-```
+## Publication visibility flags
 
-## Moderator API
-
-Requires `is_staff=True`.
-
-```text
-GET/PATCH  /api/v1/moderation/reports/{report_uuid}/
-GET        /api/v1/moderation/reports/
-PUT/DELETE /api/v1/moderation/publications/{publication_uuid}/hidden/
-PUT/DELETE /api/v1/moderation/comments/{comment_uuid}/hidden/
-GET        /api/v1/moderation/actions/
-```
-
-Hide request may include:
+Publication responses include:
 
 ```json
 {
-  "reason": "Spam campaign",
-  "report_id": "OPTIONAL_REPORT_UUID"
+  "is_author_blocked": true,
+  "is_author_muted": false,
+  "should_collapse_author_content": true
 }
 ```
 
-`PUT` = hidden, `DELETE` = published again. Both operations are idempotent.
+For an authenticated user, the general `/publications/` feed excludes authors they muted. When using an explicit `?author=UUID` filter, content is still returned so direct profile/history navigation remains possible.
 
-## Create a staff moderator
+A publication detail also contains:
 
-For development:
-
-```bash
-docker compose run --rm api python manage.py createsuperuser
+```json
+{
+  "can_interact": false
+}
 ```
+
+when either the viewer or publication author has blocked the other.
+
+## Comment visibility flags
+
+Comments/replies keep their historical position in the thread and expose:
+
+```json
+{
+  "is_author_blocked": true,
+  "is_author_muted": false,
+  "should_collapse_author_content": true,
+  "can_vote": false
+}
+```
+
+This intentionally keeps thread history structurally intact while allowing Web/Android/iOS clients to render a compact collapsed placeholder.
 
 ## Clean start
 
@@ -104,4 +126,4 @@ docker compose up -d api
 
 ## Next stage
 
-Stage 6.2: user blocking/muting and visibility rules. After that: notifications + Redis/Celery background jobs.
+Stage 7.1: notification events + Redis/Celery background jobs. This is the point where asynchronous fan-out and delivery become justified instead of being added prematurely.

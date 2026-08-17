@@ -76,6 +76,9 @@ class CommentSerializer(serializers.ModelSerializer):
     can_vote = serializers.SerializerMethodField()
     can_accept = serializers.SerializerMethodField()
     can_unaccept = serializers.SerializerMethodField()
+    is_author_blocked = serializers.BooleanField(read_only=True, default=False)
+    is_author_muted = serializers.BooleanField(read_only=True, default=False)
+    should_collapse_author_content = serializers.SerializerMethodField()
 
     class Meta:
         model = Comment
@@ -94,6 +97,9 @@ class CommentSerializer(serializers.ModelSerializer):
             "is_accepted",
             "can_accept",
             "can_unaccept",
+            "is_author_blocked",
+            "is_author_muted",
+            "should_collapse_author_content",
             "revision",
             "is_edited",
             "can_edit",
@@ -119,6 +125,7 @@ class CommentSerializer(serializers.ModelSerializer):
             and request.user.is_authenticated
             and obj.author_id != request.user.pk
             and obj.visibility == Comment.Visibility.PUBLISHED
+            and not getattr(obj, "interaction_blocked", False)
         )
 
     def _can_manage_acceptance(self, obj):
@@ -132,6 +139,13 @@ class CommentSerializer(serializers.ModelSerializer):
             and obj.publication.kind == Publication.Type.TOPIC
             and obj.publication.visibility == Publication.Visibility.PUBLISHED
             and obj.publication.author_id == request.user.pk
+            and not getattr(obj, "interaction_blocked", False)
+        )
+
+    def get_should_collapse_author_content(self, obj):
+        return bool(
+            getattr(obj, "is_author_blocked", False)
+            or getattr(obj, "is_author_muted", False)
         )
 
     def get_can_accept(self, obj):

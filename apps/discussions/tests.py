@@ -3,6 +3,7 @@ from django.test import TestCase
 from apps.discussions.models import Comment, CommentVote
 from apps.discussions.services import (
     accept_answer,
+    create_root_comment,
     remove_comment_vote,
     set_comment_vote,
     unaccept_answer,
@@ -211,3 +212,61 @@ class AcceptedAnswerServiceTests(TestCase):
                 actor=self.topic_author,
             )
 
+
+
+class BlockedDiscussionInteractionTests(TestCase):
+    def setUp(self):
+        self.owner = User.objects.create_user(
+            nickname="BlockOwner",
+            email="block-owner@example.com",
+            password="test-pass-12345",
+            first_name="Owner",
+            last_name="Example",
+            country="DE",
+            nationality="DE",
+        )
+        self.actor = User.objects.create_user(
+            nickname="BlockActor",
+            email="block-actor@example.com",
+            password="test-pass-12345",
+            first_name="Actor",
+            last_name="Example",
+            country="DE",
+            nationality="DE",
+        )
+        self.publication = Publication.objects.create(
+            author=self.owner,
+            kind=Publication.Type.TOPIC,
+            title="Blocking test",
+            content=[{"type": "paragraph", "text": "Question"}],
+            content_text="Question",
+        )
+
+    def test_block_prevents_new_root_answer(self):
+        from apps.social.services import block_user
+
+        block_user(blocker=self.owner, blocked=self.actor)
+
+        with self.assertRaises(ValueError):
+            create_root_comment(
+                publication=self.publication,
+                author=self.actor,
+                content=[{"type": "paragraph", "text": "Answer"}],
+            )
+
+    def test_block_prevents_vote_after_comment_exists(self):
+        from apps.social.services import block_user
+
+        comment = create_root_comment(
+            publication=self.publication,
+            author=self.actor,
+            content=[{"type": "paragraph", "text": "Answer"}],
+        )
+        block_user(blocker=self.owner, blocked=self.actor)
+
+        with self.assertRaises(ValueError):
+            set_comment_vote(
+                comment=comment,
+                user=self.owner,
+                value=1,
+            )
