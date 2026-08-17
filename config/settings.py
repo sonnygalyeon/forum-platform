@@ -24,6 +24,9 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "rest_framework",
     "rest_framework_simplejwt.token_blacklist",
+    "drf_spectacular",
+    "drf_spectacular_sidecar",
+    "corsheaders",
     "apps.core",
     "apps.users",
     "apps.communities",
@@ -32,10 +35,12 @@ INSTALLED_APPS = [
     "apps.media",
     "apps.discussions",
     "apps.moderation",
+    "apps.notifications",
 ]
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "corsheaders.middleware.CorsMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -87,6 +92,7 @@ TIME_ZONE = "UTC"
 USE_I18N = True
 USE_TZ = True
 STATIC_URL = "static/"
+STATIC_ROOT = BASE_DIR / "staticfiles"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 AUTH_USER_MODEL = "users.User"
 
@@ -99,6 +105,18 @@ REST_FRAMEWORK = {
     ],
     "DEFAULT_PAGINATION_CLASS": "apps.core.pagination.DefaultCursorPagination",
     "PAGE_SIZE": 20,
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+    "EXCEPTION_HANDLER": "apps.core.exceptions.api_exception_handler",
+    "DEFAULT_THROTTLE_CLASSES": [
+        "rest_framework.throttling.AnonRateThrottle",
+        "rest_framework.throttling.UserRateThrottle",
+    ],
+    "DEFAULT_THROTTLE_RATES": {
+        "anon": os.environ.get("DRF_THROTTLE_ANON", "120/min"),
+        "user": os.environ.get("DRF_THROTTLE_USER", "600/min"),
+        "auth": os.environ.get("DRF_THROTTLE_AUTH", "10/min"),
+        "uploads": os.environ.get("DRF_THROTTLE_UPLOADS", "120/min"),
+    },
 }
 
 SIMPLE_JWT = {
@@ -131,3 +149,56 @@ S3_CORS_ALLOWED_ORIGINS = [
 S3_CONFIGURE_BUCKET_CORS = os.environ.get("S3_CONFIGURE_BUCKET_CORS", "0") == "1"
 MEDIA_REQUIRE_SCAN = os.environ.get("MEDIA_REQUIRE_SCAN", "0") == "1"
 DATA_UPLOAD_MAX_MEMORY_SIZE = 2 * 1024 * 1024
+
+
+REDIS_CACHE_URL = os.environ.get("REDIS_CACHE_URL", "redis://redis:6379/1")
+CELERY_BROKER_URL = os.environ.get("CELERY_BROKER_URL", "redis://redis:6379/0")
+CELERY_TASK_IGNORE_RESULT = True
+CELERY_TASK_TRACK_STARTED = False
+CELERY_TASK_SERIALIZER = "json"
+CELERY_ACCEPT_CONTENT = ["json"]
+CELERY_TIMEZONE = "UTC"
+CELERY_BEAT_SCHEDULE = {
+    "recover-pending-notification-events": {
+        "task": "apps.notifications.tasks.recover_pending_notification_events",
+        "schedule": 60.0,
+    },
+}
+
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.redis.RedisCache",
+        "LOCATION": REDIS_CACHE_URL,
+    }
+}
+
+
+API_DOCS_ENABLED = os.environ.get("API_DOCS_ENABLED", "1") == "1"
+READINESS_CHECK_S3 = os.environ.get("READINESS_CHECK_S3", "1") == "1"
+
+CORS_ALLOWED_ORIGINS = [
+    value.strip()
+    for value in os.environ.get(
+        "CORS_ALLOWED_ORIGINS",
+        "http://localhost:3000,http://127.0.0.1:3000",
+    ).split(",")
+    if value.strip()
+]
+CORS_URLS_REGEX = r"^/api/.*$"
+CORS_ALLOW_CREDENTIALS = False
+
+SPECTACULAR_SETTINGS = {
+    "TITLE": "Forum Platform API",
+    "DESCRIPTION": "Stable API contract for Forum Platform Web, Android and iOS clients.",
+    "VERSION": "0.7.1",
+    "SERVE_INCLUDE_SCHEMA": False,
+    "OAS_VERSION": "3.1.0",
+    "COMPONENT_SPLIT_REQUEST": True,
+    "SWAGGER_UI_DIST": "SIDECAR",
+    "SWAGGER_UI_FAVICON_HREF": "SIDECAR",
+    "REDOC_DIST": "SIDECAR",
+    "SWAGGER_UI_SETTINGS": {
+        "persistAuthorization": True,
+        "displayRequestDuration": True,
+    },
+}

@@ -1,4 +1,4 @@
-.PHONY: up down build bootstrap check migrations migrate storage logs
+.PHONY: up down build bootstrap check migrations migrate storage logs worker-logs beat-logs api-validate smoke schema
 
 up:
 	docker compose up -d
@@ -26,3 +26,18 @@ logs:
 
 down:
 	docker compose down
+
+worker-logs:
+	docker compose logs -f worker
+
+beat-logs:
+	docker compose logs -f beat
+
+api-validate:
+	docker compose run --rm api sh scripts/validate_api.sh
+
+schema:
+	docker compose run --rm api python manage.py spectacular --file /tmp/forum-openapi.yml --validate
+
+smoke:
+	sh scripts/smoke_api.sh

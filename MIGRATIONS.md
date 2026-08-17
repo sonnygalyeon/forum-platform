@@ -16,9 +16,10 @@ discussions/0002_initial.py
 discussions/0003_commentvote.py      # Stage 5.2
 discussions/0004_accepted_answer.py  # Stage 5.3
 moderation/0001_initial.py           # Stage 6.1
+notifications/0001_initial.py          # Stage 7.1
 ```
 
-## Existing Stage 6.1 database
+## Existing database
 
 ```bash
 docker compose build api
@@ -26,7 +27,7 @@ docker compose run --rm api python manage.py migrate
 docker compose run --rm api python manage.py check
 ```
 
-Django should apply only `social.0002_userblock_usermute`.
+Django applies only migrations that are not already recorded. Stage 7.1 adds `notifications.0001_initial`.
 
 ## Clean database
 

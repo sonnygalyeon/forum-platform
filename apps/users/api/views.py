@@ -1,16 +1,18 @@
-from rest_framework import generics, status
+from rest_framework import generics, serializers, status
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView
+from apps.core.throttling import AuthRateThrottle
 from apps.social.selectors import user_profile_queryset
 from apps.users.services import create_token_pair
 from .serializers import LoginSerializer, LogoutSerializer, RegisterSerializer, UserMeSerializer, UserProfileSerializer
 
 class RegisterView(APIView):
     permission_classes = [AllowAny]
+    throttle_classes = [AuthRateThrottle]
     def post(self, request):
         serializer = RegisterSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -19,6 +21,7 @@ class RegisterView(APIView):
 
 class LoginView(TokenObtainPairView):
     permission_classes = [AllowAny]
+    throttle_classes = [AuthRateThrottle]
     serializer_class = LoginSerializer
 
 class MeView(generics.RetrieveUpdateAPIView):
@@ -37,11 +40,20 @@ class UserDetailView(generics.RetrieveAPIView):
 
 class LogoutView(APIView):
     permission_classes = [AllowAny]
+    throttle_classes = [AuthRateThrottle]
     def post(self, request):
         serializer = LogoutSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         try:
             RefreshToken(serializer.validated_data["refresh"]).blacklist()
         except TokenError:
-            return Response({"detail": "Invalid or expired refresh token."}, status=status.HTTP_400_BAD_REQUEST)
+            raise serializers.ValidationError({"refresh": "Invalid or expired refresh token."})
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+from rest_framework_simplejwt.views import TokenRefreshView
+
+
+class RateLimitedTokenRefreshView(TokenRefreshView):
+    permission_classes = [AllowAny]
+    throttle_classes = [AuthRateThrottle]

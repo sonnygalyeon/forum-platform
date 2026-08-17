@@ -55,6 +55,15 @@ def create_publication(*, author, kind, title, content, community, tag_names):
     )
     publication.tags.set(get_or_create_tags(tag_names))
     create_revision_snapshot(publication, author)
+
+    from apps.notifications.events import emit_notification_event
+    from apps.notifications.models import NotificationEvent
+
+    emit_notification_event(
+        kind=NotificationEvent.Kind.NEW_PUBLICATION,
+        actor=author,
+        publication=publication,
+    )
     return publication
 
 @transaction.atomic

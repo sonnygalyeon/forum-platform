@@ -55,6 +55,16 @@ def create_root_comment(*, publication, author, content):
         raise
 
     create_comment_revision(comment, author)
+
+    from apps.notifications.events import emit_notification_event
+    from apps.notifications.models import NotificationEvent
+
+    emit_notification_event(
+        kind=NotificationEvent.Kind.PUBLICATION_RESPONSE,
+        actor=author,
+        publication=publication,
+        comment=comment,
+    )
     return comment
 
 
@@ -94,6 +104,16 @@ def create_reply(*, parent, author, content):
     )
 
     create_comment_revision(comment, author)
+
+    from apps.notifications.events import emit_notification_event
+    from apps.notifications.models import NotificationEvent
+
+    emit_notification_event(
+        kind=NotificationEvent.Kind.COMMENT_REPLY,
+        actor=author,
+        publication=parent.publication,
+        comment=comment,
+    )
     return comment
 
 
@@ -266,9 +286,20 @@ def accept_answer(*, answer, actor):
         previous.is_accepted = False
         previous.save(update_fields=["is_accepted"])
 
-    if not answer.is_accepted:
+    changed = not answer.is_accepted
+    if changed:
         answer.is_accepted = True
         answer.save(update_fields=["is_accepted"])
+
+        from apps.notifications.events import emit_notification_event
+        from apps.notifications.models import NotificationEvent
+
+        emit_notification_event(
+            kind=NotificationEvent.Kind.ANSWER_ACCEPTED,
+            actor=actor,
+            publication=publication,
+            comment=answer,
+        )
 
     return answer
 

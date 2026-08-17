@@ -33,6 +33,7 @@ def create_report(*, reporter, target_type, target, reason, details=""):
 @transaction.atomic
 def update_report_status(*, report, moderator, status, resolution_note=""):
     report = Report.objects.select_for_update().get(pk=report.pk)
+    previous_status = report.status
 
     if status not in Report.Status.values:
         raise ValueError("Invalid report status.")
@@ -54,6 +55,20 @@ def update_report_status(*, report, moderator, status, resolution_note=""):
             "updated_at",
         ]
     )
+
+    if (
+        status in {Report.Status.RESOLVED, Report.Status.DISMISSED}
+        and status != previous_status
+    ):
+        from apps.notifications.events import emit_notification_event
+        from apps.notifications.models import NotificationEvent
+
+        emit_notification_event(
+            kind=NotificationEvent.Kind.MODERATION_UPDATE,
+            actor=moderator,
+            report=report,
+        )
+
     return report
 
 

@@ -25,10 +25,20 @@ def follow_user(*, follower, following):
         raise ValueError("You cannot follow yourself.")
     if users_have_block_between(follower, following):
         raise ValueError("Follow is unavailable while either user has blocked the other.")
-    return UserFollow.objects.get_or_create(
+    edge, created = UserFollow.objects.get_or_create(
         follower=follower,
         following=following,
     )
+    if created:
+        from apps.notifications.events import emit_notification_event
+        from apps.notifications.models import NotificationEvent
+
+        emit_notification_event(
+            kind=NotificationEvent.Kind.NEW_FOLLOWER,
+            actor=follower,
+            target_user=following,
+        )
+    return edge, created
 
 
 def unfollow_user(*, follower, following):
