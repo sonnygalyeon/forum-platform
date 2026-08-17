@@ -129,11 +129,15 @@ def set_comment_vote(*, comment, user, value):
     comment = (
         Comment.objects
         .select_for_update()
+        .select_related("publication")
         .get(pk=comment.pk)
     )
 
     if comment.visibility != Comment.Visibility.PUBLISHED:
         raise ValueError("Cannot vote on a hidden comment.")
+
+    if comment.publication.visibility != Publication.Visibility.PUBLISHED:
+        raise ValueError("Publication is not available.")
 
     if comment.author_id == user.pk:
         raise ValueError("You cannot vote for your own comment.")
@@ -161,7 +165,7 @@ def set_comment_vote(*, comment, user, value):
         delta = value - old_value
 
     comment.score += delta
-    comment.save(update_fields=["score", "updated_at"])
+    comment.save(update_fields=["score"])
 
     return comment, value
 
@@ -187,6 +191,101 @@ def remove_comment_vote(*, comment, user):
 
     comment.score -= vote.value
     vote.delete()
-    comment.save(update_fields=["score", "updated_at"])
+    comment.save(update_fields=["score"])
 
     return comment
+
+@transaction.atomic
+def accept_answer(*, answer, actor):
+    """Accept a root Topic answer. The Topic author is the only manager.
+
+    The publication row is locked first so two concurrent attempts to accept
+    different answers for the same Topic are serialized without relying only
+    on the partial unique constraint.
+    """
+    publication_id = answer.publication_id
+
+    publication = (
+        Publication.objects
+        .select_for_update()
+        .get(pk=publication_id)
+    )
+
+    answer = (
+        Comment.objects
+        .select_for_update()
+        .get(pk=answer.pk)
+    )
+
+    if publication.kind != Publication.Type.TOPIC:
+        raise ValueError("Accepted answers are available only for topics.")
+
+    if publication.visibility != Publication.Visibility.PUBLISHED:
+        raise ValueError("Publication is not available.")
+
+    if publication.author_id != actor.pk:
+        raise PermissionError("Only the topic author can accept an answer.")
+
+    if answer.publication_id != publication.pk:
+        raise ValueError("Answer does not belong to this topic.")
+
+    if answer.kind != Comment.Kind.ANSWER or answer.parent_id is not None:
+        raise ValueError("Only a root topic answer can be accepted.")
+
+    if answer.visibility != Comment.Visibility.PUBLISHED:
+        raise ValueError("A hidden answer cannot be accepted.")
+
+    previous = (
+        Comment.objects
+        .select_for_update()
+        .filter(
+            publication=publication,
+            is_accepted=True,
+        )
+        .exclude(pk=answer.pk)
+        .first()
+    )
+
+    if previous is not None:
+        previous.is_accepted = False
+        previous.save(update_fields=["is_accepted"])
+
+    if not answer.is_accepted:
+        answer.is_accepted = True
+        answer.save(update_fields=["is_accepted"])
+
+    return answer
+
+
+@transaction.atomic
+def unaccept_answer(*, answer, actor):
+    """Remove accepted state from an answer. DELETE semantics are idempotent."""
+    publication_id = answer.publication_id
+
+    publication = (
+        Publication.objects
+        .select_for_update()
+        .get(pk=publication_id)
+    )
+
+    answer = (
+        Comment.objects
+        .select_for_update()
+        .get(pk=answer.pk)
+    )
+
+    if publication.kind != Publication.Type.TOPIC:
+        raise ValueError("Accepted answers are available only for topics.")
+
+    if publication.author_id != actor.pk:
+        raise PermissionError("Only the topic author can unaccept an answer.")
+
+    if answer.kind != Comment.Kind.ANSWER or answer.parent_id is not None:
+        raise ValueError("Only a root topic answer can be accepted.")
+
+    if answer.is_accepted:
+        answer.is_accepted = False
+        answer.save(update_fields=["is_accepted"])
+
+    return answer
+

@@ -1,5 +1,6 @@
 from django.shortcuts import get_object_or_404
 from rest_framework import generics, serializers, status
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -7,10 +8,12 @@ from rest_framework.views import APIView
 from apps.discussions.models import Comment, CommentRevision
 from apps.discussions.selectors import comment_queryset
 from apps.discussions.services import (
+    accept_answer,
     create_reply,
     create_root_comment,
     remove_comment_vote,
     set_comment_vote,
+    unaccept_answer,
     update_comment,
 )
 from apps.publications.models import Publication
@@ -22,6 +25,7 @@ from .serializers import (
     CommentSerializer,
     CommentUpdateSerializer,
     CommentVoteSerializer,
+    UserAnswerSerializer,
 )
 
 
@@ -81,6 +85,7 @@ class CommentRepliesView(generics.ListAPIView):
             Comment,
             public_id=self.kwargs["comment_id"],
             visibility=Comment.Visibility.PUBLISHED,
+            publication__visibility=Publication.Visibility.PUBLISHED,
         )
 
     def get_queryset(self):
@@ -124,6 +129,8 @@ class CommentDetailView(APIView):
         return get_object_or_404(
             comment_queryset(user),
             public_id=self.kwargs["comment_id"],
+            visibility=Comment.Visibility.PUBLISHED,
+            publication__visibility=Publication.Visibility.PUBLISHED,
         )
 
     def get(self, request, comment_id):
@@ -219,6 +226,8 @@ class CommentRevisionListView(generics.ListAPIView):
         comment = get_object_or_404(
             Comment,
             public_id=self.kwargs["comment_id"],
+            visibility=Comment.Visibility.PUBLISHED,
+            publication__visibility=Publication.Visibility.PUBLISHED,
         )
         return (
             CommentRevision.objects
@@ -240,4 +249,114 @@ class UserCommentsView(generics.ListAPIView):
         return comment_queryset(self.request.user).filter(
             author=user,
             visibility=Comment.Visibility.PUBLISHED,
+            publication__visibility=Publication.Visibility.PUBLISHED,
         )
+
+class CommentAcceptedView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get_answer(self):
+        return get_object_or_404(
+            Comment,
+            public_id=self.kwargs["comment_id"],
+        )
+
+    def put(self, request, comment_id):
+        answer = self.get_answer()
+
+        try:
+            answer = accept_answer(
+                answer=answer,
+                actor=request.user,
+            )
+        except PermissionError as exc:
+            raise PermissionDenied(str(exc)) from exc
+        except ValueError as exc:
+            raise serializers.ValidationError({"detail": str(exc)}) from exc
+
+        answer = comment_queryset(request.user).get(pk=answer.pk)
+        return Response(
+            CommentSerializer(
+                answer,
+                context={"request": request},
+            ).data
+        )
+
+    def delete(self, request, comment_id):
+        answer = self.get_answer()
+
+        try:
+            answer = unaccept_answer(
+                answer=answer,
+                actor=request.user,
+            )
+        except PermissionError as exc:
+            raise PermissionDenied(str(exc)) from exc
+        except ValueError as exc:
+            raise serializers.ValidationError({"detail": str(exc)}) from exc
+
+        answer = comment_queryset(request.user).get(pk=answer.pk)
+        return Response(
+            CommentSerializer(
+                answer,
+                context={"request": request},
+            ).data
+        )
+
+
+class PublicationAcceptedAnswerView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request, publication_id):
+        publication = get_object_or_404(
+            Publication,
+            public_id=publication_id,
+            kind=Publication.Type.TOPIC,
+            visibility=Publication.Visibility.PUBLISHED,
+        )
+
+        answer = (
+            comment_queryset(request.user)
+            .filter(
+                publication=publication,
+                kind=Comment.Kind.ANSWER,
+                parent__isnull=True,
+                is_accepted=True,
+                visibility=Comment.Visibility.PUBLISHED,
+            )
+            .first()
+        )
+
+        if answer is None:
+            return Response({"accepted_answer": None})
+
+        return Response(
+            {
+                "accepted_answer": CommentSerializer(
+                    answer,
+                    context={"request": request},
+                ).data
+            }
+        )
+
+
+class UserAnswersView(generics.ListAPIView):
+    permission_classes = [AllowAny]
+    serializer_class = UserAnswerSerializer
+
+    def get_queryset(self):
+        user = get_object_or_404(
+            User,
+            public_id=self.kwargs["user_id"],
+            is_active=True,
+        )
+
+        return comment_queryset(self.request.user).filter(
+            author=user,
+            kind=Comment.Kind.ANSWER,
+            parent__isnull=True,
+            visibility=Comment.Visibility.PUBLISHED,
+            publication__kind=Publication.Type.TOPIC,
+            publication__visibility=Publication.Visibility.PUBLISHED,
+        )
+
