@@ -1,26 +1,98 @@
-# Forum Platform 0.5.1 — Stage 5.2
+# Forum Platform 0.6.0 — Stage 6.1
 
 API-first forum backend built with Django REST Framework, PostgreSQL and S3-compatible object storage.
 
-## Included
+## Stage 6.1 adds moderation and reporting
 
-- custom user model + JWT authentication;
-- communities and subscriptions;
-- user follows;
-- posts / articles / topics;
-- immutable publication revision history;
-- direct multipart uploads to MinIO/S3;
-- publication attachments / preview media;
-- comments, topic answers and nested replies;
-- immutable comment revision history;
-- **comment voting: +1 / -1**;
-- one vote per user per comment;
-- no voting on your own comment;
-- idempotent vote `PUT` and vote removal `DELETE`;
-- cached `Comment.score` updated transactionally;
-- `my_vote` in comment API responses.
+- authenticated users can report publications, comments and user profiles;
+- duplicate active reports for the same reporter/target are prevented in PostgreSQL;
+- moderation queue for staff users;
+- report lifecycle: `open -> reviewing -> resolved/dismissed`;
+- moderators can hide/unhide publications and comments without physical deletion;
+- every hide/unhide is recorded in immutable `ModerationAction` audit history;
+- optionally link a moderation action to the report that caused it;
+- hiding an accepted answer automatically clears `is_accepted` so another visible answer can be accepted;
+- hidden comments/revisions are no longer readable through public direct-UUID endpoints.
 
-## Quick start — clean dev environment
+Everything from 5.3 remains included: JWT, communities/follows, publications/revisions, MinIO multipart media, discussions, votes and accepted answers.
+
+## Upgrade from 5.3
+
+The archive adds a new app and migration:
+
+```text
+apps/moderation/migrations/0001_initial.py
+```
+
+If 5.3 is already migrated:
+
+```bash
+docker compose build api
+docker compose run --rm api python manage.py migrate
+docker compose run --rm api python manage.py check
+docker compose run --rm api python manage.py test apps.moderation apps.discussions
+```
+
+Do not recreate old migrations.
+
+## Report API
+
+```text
+POST /api/v1/reports/
+GET  /api/v1/reports/mine/
+```
+
+Example:
+
+```json
+{
+  "target_type": "publication",
+  "target_id": "PUBLIC_UUID",
+  "reason": "spam",
+  "details": "Optional explanation"
+}
+```
+
+Supported targets:
+
+```text
+publication
+comment
+user
+```
+
+## Moderator API
+
+Requires `is_staff=True`.
+
+```text
+GET/PATCH  /api/v1/moderation/reports/{report_uuid}/
+GET        /api/v1/moderation/reports/
+PUT/DELETE /api/v1/moderation/publications/{publication_uuid}/hidden/
+PUT/DELETE /api/v1/moderation/comments/{comment_uuid}/hidden/
+GET        /api/v1/moderation/actions/
+```
+
+Hide request may include:
+
+```json
+{
+  "reason": "Spam campaign",
+  "report_id": "OPTIONAL_REPORT_UUID"
+}
+```
+
+`PUT` = hidden, `DELETE` = published again. Both operations are idempotent.
+
+## Create a staff moderator
+
+For development:
+
+```bash
+docker compose run --rm api python manage.py createsuperuser
+```
+
+## Clean start
 
 ```bash
 cp .env.example .env
@@ -30,81 +102,6 @@ docker compose run --rm api python manage.py ensure_object_storage
 docker compose up -d api
 ```
 
-Or:
-
-```bash
-make bootstrap
-docker compose up -d api
-```
-
-Check:
-
-```bash
-curl http://localhost:8000/api/v1/health/
-```
-
-## Migrations
-
-The archive already contains project migrations. You should **not** run `makemigrations` just to start the project.
-
-See `MIGRATIONS.md`.
-
-## Discussion API
-
-```text
-GET/POST /api/v1/publications/{publication_uuid}/comments/
-GET/PATCH /api/v1/comments/{comment_uuid}/
-GET/POST /api/v1/comments/{comment_uuid}/replies/
-PUT/DELETE /api/v1/comments/{comment_uuid}/vote/
-GET /api/v1/comments/{comment_uuid}/revisions/
-GET /api/v1/users/{user_uuid}/comments/
-```
-
-### Upvote
-
-```bash
-curl -X PUT \
-  "http://localhost:8000/api/v1/comments/$COMMENT_UUID/vote/" \
-  -H "Authorization: Bearer $ACCESS_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"value": 1}'
-```
-
-Response:
-
-```json
-{
-  "score": 1,
-  "my_vote": 1
-}
-```
-
-### Change +1 to -1
-
-```bash
-curl -X PUT \
-  "http://localhost:8000/api/v1/comments/$COMMENT_UUID/vote/" \
-  -H "Authorization: Bearer $ACCESS_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"value": -1}'
-```
-
-Changing `+1` to `-1` changes the cached score by `-2`.
-
-### Remove vote
-
-```bash
-curl -X DELETE \
-  "http://localhost:8000/api/v1/comments/$COMMENT_UUID/vote/" \
-  -H "Authorization: Bearer $ACCESS_TOKEN"
-```
-
-## Vote model
-
-`CommentVote` is the source of truth for an individual user's vote. `Comment.score` is a denormalized counter used so list feeds do not execute `SUM()` across every vote for every displayed comment.
-
-Vote mutation locks the comment row inside `transaction.atomic()`, so concurrent score changes cannot overwrite each other.
-
 ## Next stage
 
-Stage 5.3 will use the existing `Comment.is_accepted` field to implement accepting/unaccepting the single main answer to a Topic and improve the profile answer feed.
+Stage 6.2: user blocking/muting and visibility rules. After that: notifications + Redis/Celery background jobs.

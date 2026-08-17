@@ -3,6 +3,7 @@ from rest_framework import serializers
 
 from apps.discussions.content import validate_comment_content
 from apps.discussions.models import Comment, CommentRevision
+from apps.publications.models import Publication
 from apps.users.api.serializers import UserPublicSerializer
 
 
@@ -34,6 +35,20 @@ class CommentVoteSerializer(serializers.Serializer):
     )
 
 
+class PublicationCompactSerializer(serializers.ModelSerializer):
+    id = serializers.UUIDField(source="public_id", read_only=True)
+    type = serializers.CharField(source="kind", read_only=True)
+
+    class Meta:
+        model = Publication
+        fields = [
+            "id",
+            "type",
+            "title",
+            "created_at",
+        ]
+
+
 class CommentSerializer(serializers.ModelSerializer):
     id = serializers.UUIDField(source="public_id", read_only=True)
     author = UserPublicSerializer(read_only=True)
@@ -59,6 +74,8 @@ class CommentSerializer(serializers.ModelSerializer):
     is_edited = serializers.SerializerMethodField()
     can_edit = serializers.SerializerMethodField()
     can_vote = serializers.SerializerMethodField()
+    can_accept = serializers.SerializerMethodField()
+    can_unaccept = serializers.SerializerMethodField()
 
     class Meta:
         model = Comment
@@ -75,6 +92,8 @@ class CommentSerializer(serializers.ModelSerializer):
             "can_vote",
             "reply_count",
             "is_accepted",
+            "can_accept",
+            "can_unaccept",
             "revision",
             "is_edited",
             "can_edit",
@@ -101,6 +120,34 @@ class CommentSerializer(serializers.ModelSerializer):
             and obj.author_id != request.user.pk
             and obj.visibility == Comment.Visibility.PUBLISHED
         )
+
+    def _can_manage_acceptance(self, obj):
+        request = self.context.get("request")
+        return bool(
+            request
+            and request.user.is_authenticated
+            and obj.kind == Comment.Kind.ANSWER
+            and obj.parent_id is None
+            and obj.visibility == Comment.Visibility.PUBLISHED
+            and obj.publication.kind == Publication.Type.TOPIC
+            and obj.publication.visibility == Publication.Visibility.PUBLISHED
+            and obj.publication.author_id == request.user.pk
+        )
+
+    def get_can_accept(self, obj):
+        return self._can_manage_acceptance(obj) and not obj.is_accepted
+
+    def get_can_unaccept(self, obj):
+        return self._can_manage_acceptance(obj) and obj.is_accepted
+
+
+class UserAnswerSerializer(CommentSerializer):
+    publication = PublicationCompactSerializer(read_only=True)
+
+    class Meta(CommentSerializer.Meta):
+        fields = CommentSerializer.Meta.fields + [
+            "publication",
+        ]
 
 
 class CommentRevisionSerializer(serializers.ModelSerializer):

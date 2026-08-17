@@ -6,4 +6,4 @@ python manage.py migrate
 python manage.py ensure_object_storage
 python manage.py check
 
-echo "Forum Platform 0.5.1 bootstrap complete."
+echo "Forum Platform 0.6.0 bootstrap complete."

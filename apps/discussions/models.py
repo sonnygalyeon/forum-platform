@@ -93,6 +93,13 @@ class Comment(models.Model):
                 condition=Q(is_accepted=True),
                 name="discussion_one_accepted_answer",
             ),
+            models.CheckConstraint(
+                condition=(
+                    Q(is_accepted=False)
+                    | Q(kind="answer")
+                ),
+                name="discussion_accepted_only_answer",
+            ),
         ]
         indexes = [
             models.Index(fields=["publication", "kind", "-created_at"]),

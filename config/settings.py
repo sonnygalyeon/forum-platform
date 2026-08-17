@@ -31,6 +31,7 @@ INSTALLED_APPS = [
     "apps.publications",
     "apps.media",
     "apps.discussions",
+    "apps.moderation",
 ]
 
 MIDDLEWARE = [
