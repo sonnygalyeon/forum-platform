@@ -1,0 +1,29 @@
+{
+  "name": "night-iris-forum-web",
+  "version": "0.8.2",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint ."
+  },
+  "dependencies": {
+    "@tanstack/react-query": "5.101.4",
+    "lucide-react": "1.31.0",
+    "next": "16.3.1",
+    "react": "19.2.7",
+    "react-dom": "19.2.7"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "4.3.3",
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "eslint": "^9.0.0",
+    "eslint-config-next": "16.3.1",
+    "postcss": "^8.5.23",
+    "tailwindcss": "4.3.3",
+    "typescript": "^5.8.0"
+  }
+}
