@@ -4,6 +4,18 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
+from openapi_enums import (
+    COMMENT_KIND_CHOICES,
+    MEDIA_ASSET_KIND_CHOICES,
+    MEDIA_ASSET_STATUS_CHOICES,
+    MODERATION_ACTION_TARGET_TYPE_CHOICES,
+    NOTIFICATION_EVENT_STATUS_CHOICES,
+    NOTIFICATION_KIND_CHOICES,
+    PUBLICATION_KIND_CHOICES,
+    REPORT_STATUS_CHOICES,
+    REPORT_TARGET_TYPE_CHOICES,
+)
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / ".env")
 
@@ -198,10 +210,15 @@ SPECTACULAR_SETTINGS = {
     "SWAGGER_UI_FAVICON_HREF": "SIDECAR",
     "REDOC_DIST": "SIDECAR",
     "ENUM_NAME_OVERRIDES": {
-        "PublicationKindEnum": "apps.publications.models.Publication.Type.choices",
-        "CommentKindEnum": "apps.discussions.models.Comment.Kind.choices",
-        "MediaAssetKindEnum": "apps.media.models.MediaAsset.Kind.choices",
-        "NotificationKindEnum": "apps.notifications.models.NotificationEvent.Kind.choices",
+        "PublicationKindEnum": PUBLICATION_KIND_CHOICES,
+        "CommentKindEnum": COMMENT_KIND_CHOICES,
+        "MediaAssetKindEnum": MEDIA_ASSET_KIND_CHOICES,
+        "NotificationKindEnum": NOTIFICATION_KIND_CHOICES,
+        "MediaAssetStatusEnum": MEDIA_ASSET_STATUS_CHOICES,
+        "NotificationEventStatusEnum": NOTIFICATION_EVENT_STATUS_CHOICES,
+        "ReportStatusEnum": REPORT_STATUS_CHOICES,
+        "ReportTargetTypeEnum": REPORT_TARGET_TYPE_CHOICES,
+        "ModerationActionTargetTypeEnum": MODERATION_ACTION_TARGET_TYPE_CHOICES,
     },
     "SWAGGER_UI_SETTINGS": {
         "persistAuthorization": True,
