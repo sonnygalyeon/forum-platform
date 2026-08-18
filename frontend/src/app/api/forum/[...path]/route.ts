@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { clearAuthCookies, currentTokens, djangoFetch, refreshAccess, setAuthCookies } from "@/lib/server-auth";
 
-const ALLOWED_ROOTS = new Set(["publications", "feed", "communities", "notifications", "users", "comments"]);
+const ALLOWED_ROOTS = new Set(["publications", "feed", "communities", "notifications", "users", "comments", "admin", "moderation", "ready"]);
 
 type Context = { params: Promise<{ path: string[] }> };
 

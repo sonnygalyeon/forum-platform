@@ -1,0 +1,7 @@
+"use client";
+import { useQuery } from "@tanstack/react-query";
+import { AdminEmpty,StatusBadge } from "@/components/admin/admin-ui";
+import { LoadingBlock } from "@/components/ui/loading";
+import { clientApi,errorMessage } from "@/lib/client-api";
+import type { AdminModerationAction,AdminPage } from "@/lib/types";
+export default function AdminAuditPage(){const q=useQuery({queryKey:["admin","actions"],queryFn:()=>clientApi<AdminPage<AdminModerationAction>>("/admin/actions/?limit=100")});return <><div className="admin-page-head"><div><div className="eyebrow">НЕИЗМЕНЯЕМАЯ ИСТОРИЯ МОДЕРАЦИИ</div><h1>Журнал действий</h1><p>История скрытия и восстановления публикаций и комментариев. Новые записи создаются backend-сервисами модерации.</p></div></div>{q.isLoading?<LoadingBlock/>:q.error?<div className="error-panel">{errorMessage(q.error)}</div>:!q.data?.results.length?<AdminEmpty title="Журнал пока пуст" text="Здесь появятся первые реальные действия модераторов."/>:<div className="admin-timeline">{q.data.results.map(a=><article key={a.id}><span className="timeline-dot"/><div className="timeline-card"><div className="admin-content-meta"><StatusBadge value={a.action}/><span>{a.target_type}</span><time>{new Date(a.created_at).toLocaleString("ru-RU")}</time></div><h3>{a.target_label}</h3><p>{a.reason||"Причина не указана."}</p><small>Модератор: @{a.actor.nickname}{a.report_id?" · связано с жалобой":""}</small></div></article>)}</div>}</>}

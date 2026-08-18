@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Bell, LogIn, Plus, UserRound } from "lucide-react";
+import { Bell, LogIn, Plus, ShieldCheck, UserRound } from "lucide-react";
 import { NightIrisMark } from "@/components/brand/night-iris-mark";
 import { ThemeToggle } from "./theme-toggle";
 import { useAuth } from "@/providers/auth-provider";
@@ -15,6 +15,7 @@ export function Header() {
         <nav className="desktop-topnav" aria-label="Основная навигация">
           <Link href="/">Лента</Link>
           <Link href="/communities">Сообщества</Link>
+          {user?.is_staff ? <Link href="/admin"><ShieldCheck size={14}/> Админка</Link> : null}
         </nav>
         <div className="header-actions">
           <ThemeToggle />
