@@ -1,4 +1,4 @@
-# Night Iris Forum 0.8.5 — Social Identity
+# Night Iris Forum 0.8.6 — Search & Discovery
 
 Current full project: Django API + Next.js frontend + custom administration + complete user UX. Stage 8.5 adds reputation, levels, achievements, safe avatar frames, profile accent presets, pinned badges, and followers/following screens. See `STAGE_8_5_SOCIAL_IDENTITY.md` for the exact rules and verification commands.
 

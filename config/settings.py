@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     "apps.core",
     "apps.users",
     "apps.identity",
+    "apps.discovery",
     "apps.communities",
     "apps.social",
     "apps.publications",
@@ -208,7 +209,7 @@ CORS_ALLOW_CREDENTIALS = False
 SPECTACULAR_SETTINGS = {
     "TITLE": "Forum Platform API",
     "DESCRIPTION": "Stable API contract for Forum Platform Web, Android and iOS clients.",
-    "VERSION": "0.8.5",
+    "VERSION": "0.8.6",
     "SERVE_INCLUDE_SCHEMA": False,
     "OAS_VERSION": "3.1.0",
     "COMPONENT_SPLIT_REQUEST": True,

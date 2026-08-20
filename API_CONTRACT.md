@@ -70,3 +70,12 @@ Blocked/muted historical content is not silently deleted from thread history. Vi
 ```
 
 The OpenAPI schema is the machine-readable reference for endpoint input/output structure.
+
+## Stage 8.6 — Search & Discovery
+
+```text
+GET /api/v1/search/
+GET /api/v1/discover/
+```
+
+`/search/` supports `q`, `scope`, `type`, `date`, `sort`, `accepted`, and `tag` query parameters. Search results are visibility-aware and reuse the existing blocked/muted publication semantics.

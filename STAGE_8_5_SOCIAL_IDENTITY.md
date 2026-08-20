@@ -91,3 +91,15 @@ npm install
 npm run build
 npm run dev
 ```
+
+## 8.5 proxy fix
+
+The Next.js BFF allow-list now exposes the `identity` API root.
+
+This fixes frontend requests such as:
+
+- `/api/forum/identity/me`
+- `/api/forum/identity/frames`
+- `/api/forum/identity/badges`
+
+which previously returned a frontend-generated 404 before reaching Django.

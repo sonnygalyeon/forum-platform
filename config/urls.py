@@ -14,6 +14,7 @@ urlpatterns = [
     path("api/v1/", include("apps.core.urls")),
     path("api/v1/", include("apps.users.api.urls")),
     path("api/v1/", include("apps.identity.api.urls")),
+    path("api/v1/", include("apps.discovery.api.urls")),
     path("api/v1/", include("apps.communities.api.urls")),
     path("api/v1/", include("apps.social.api.urls")),
     path("api/v1/", include("apps.publications.api.urls")),
