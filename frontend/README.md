@@ -1,4 +1,4 @@
-# Night Iris Forum Web — 0.8.5
+# Night Iris Forum Web — 0.8.6
 
 Next.js frontend for the Night Iris Forum Django API.
 

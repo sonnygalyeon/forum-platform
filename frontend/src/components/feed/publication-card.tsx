@@ -18,7 +18,7 @@ export function PublicationCard({ publication }: { publication: Publication }) {
         </div>
         <Link href={`/publications/${publication.id}`} className="topic-title">{title}</Link>
         {publication.excerpt ? <p className="excerpt">{publication.excerpt}</p> : null}
-        <div className="card-footer"><div className="tags">{publication.tags.map(tag => <span className="tag" key={tag.id}>{tag.name}</span>)}</div><span className="muted-inline"><MessageSquareText size={13}/> {publication.comment_count ?? 0}</span></div>
+        <div className="card-footer"><div className="tags">{publication.tags.map(tag => <Link className="tag" href={`/search?scope=publications&tag=${encodeURIComponent(tag.slug)}`} key={tag.id}>{tag.name}</Link>)}</div><span className="muted-inline"><MessageSquareText size={13}/> {publication.comment_count ?? 0}</span></div>
       </div>
       <div className="iris-ornament"><span/><span/><span/></div>
     </article>

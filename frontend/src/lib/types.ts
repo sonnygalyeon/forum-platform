@@ -184,6 +184,25 @@ export type CursorPage<T> = {
   results: T[];
 };
 
+
+export type SearchScope = "all" | "publications" | "users" | "communities" | "tags";
+export type SearchTag = { id: string; name: string; slug: string; publication_count: number };
+export type SearchResponse = {
+  query: string;
+  scope: SearchScope;
+  counts: { publications: number; users: number; communities: number; tags: number };
+  publications: Publication[];
+  users: User[];
+  communities: Community[];
+  tags: SearchTag[];
+};
+export type DiscoveryResponse = {
+  popular_tags: SearchTag[];
+  active_communities: Community[];
+  open_topics: Publication[];
+  top_users: User[];
+};
+
 export type AdminPage<T> = { count: number; next: string | null; previous: string | null; results: T[] };
 export type AdminOverview = {
   generated_at: string;

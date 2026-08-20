@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { Bell, LogIn, Plus, ShieldCheck, UserRound } from "lucide-react";
+import { Bell, LogIn, Plus, Search, ShieldCheck, UserRound } from "lucide-react";
 import { NightIrisMark } from "@/components/brand/night-iris-mark";
 import { UserAvatar } from "@/components/profile/user-avatar";
 import { ThemeToggle } from "./theme-toggle";
+import { GlobalSearch } from "@/components/search/global-search";
 import { useAuth } from "@/providers/auth-provider";
 
 export function Header() {
@@ -18,7 +19,9 @@ export function Header() {
           <Link href="/communities">Сообщества</Link>
           {user?.is_staff ? <Link href="/admin"><ShieldCheck size={14}/> Админка</Link> : null}
         </nav>
+        <div className="header-search-slot"><GlobalSearch /></div>
         <div className="header-actions">
+          <Link href="/search" className="icon-button mobile-search-trigger" aria-label="Поиск"><Search size={17}/></Link>
           <ThemeToggle />
           {!loading && user ? (
             <>

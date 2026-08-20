@@ -1,12 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { Bell, Home, PlusSquare, ShieldCheck, UsersRound, UserRound } from "lucide-react";
+import { Bell, Home, PlusSquare, Search, ShieldCheck, UsersRound, UserRound } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/providers/auth-provider";
 
 const publicItems = [
   { href: "/", label: "Лента", icon: Home },
+  { href: "/search", label: "Поиск", icon: Search },
   { href: "/communities", label: "Сообщества", icon: UsersRound },
 ];
 
@@ -18,5 +19,5 @@ export function Sidebar() {
     { href: "/profile", label: "Профиль", icon: UserRound },
     ...(user.is_staff ? [{ href: "/admin", label: "Админка", icon: ShieldCheck }] : []),
   ] : publicItems;
-  return <aside className="sidebar"><div className="eyebrow">НАВИГАЦИЯ</div><nav>{items.map(({href,label,icon:Icon}) => <Link key={href} href={href} className={`nav-item ${pathname === href || (href!=="/"&&pathname.startsWith(href)) ? "nav-item-active" : ""}`}><Icon size={17}/>{label}</Link>)}</nav><div className="sidebar-note"><span className="status-dot"/> Night Iris 0.8.5<br/><small>API-first · structured content</small></div></aside>;
+  return <aside className="sidebar"><div className="eyebrow">НАВИГАЦИЯ</div><nav>{items.map(({href,label,icon:Icon}) => <Link key={href} href={href} className={`nav-item ${pathname === href || (href!=="/"&&pathname.startsWith(href)) ? "nav-item-active" : ""}`}><Icon size={17}/>{label}</Link>)}</nav><div className="sidebar-note"><span className="status-dot"/> Night Iris 0.8.6<br/><small>API-first · structured content</small></div></aside>;
 }
