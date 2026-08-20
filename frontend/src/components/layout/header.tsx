@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Bell, LogIn, Plus, ShieldCheck, UserRound } from "lucide-react";
 import { NightIrisMark } from "@/components/brand/night-iris-mark";
+import { UserAvatar } from "@/components/profile/user-avatar";
 import { ThemeToggle } from "./theme-toggle";
 import { useAuth } from "@/providers/auth-provider";
 
@@ -23,7 +24,7 @@ export function Header() {
             <>
               <Link href="/new" className="primary-button compact-button"><Plus size={15}/> Создать</Link>
               <Link href="/notifications" className="icon-button" aria-label="Уведомления"><Bell size={17}/></Link>
-              <Link href="/profile" className="avatar avatar-sm" aria-label="Профиль">{user.nickname.slice(0, 2).toUpperCase()}</Link>
+              <Link href="/profile" aria-label="Профиль"><UserAvatar user={user} size="sm"/></Link>
             </>
           ) : !loading ? (
             <>

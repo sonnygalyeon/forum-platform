@@ -18,6 +18,9 @@ def comment_queryset(user=None):
         Comment.objects
         .select_related(
             "author",
+            "author__avatar_asset",
+            "author__banner_asset",
+            "author__identity_profile__equipped_frame",
             "publication",
             "publication__author",
             "parent",

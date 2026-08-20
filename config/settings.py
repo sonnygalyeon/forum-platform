@@ -6,6 +6,10 @@ from dotenv import load_dotenv
 
 from openapi_enums import (
     COMMENT_KIND_CHOICES,
+    IDENTITY_ACCENT_CHOICES,
+    IDENTITY_BADGE_RULE_CHOICES,
+    IDENTITY_FRAME_UNLOCK_CHOICES,
+    IDENTITY_TIER_CHOICES,
     MEDIA_ASSET_KIND_CHOICES,
     MEDIA_ASSET_STATUS_CHOICES,
     MODERATION_ACTION_TARGET_TYPE_CHOICES,
@@ -41,6 +45,7 @@ INSTALLED_APPS = [
     "corsheaders",
     "apps.core",
     "apps.users",
+    "apps.identity",
     "apps.communities",
     "apps.social",
     "apps.publications",
@@ -203,7 +208,7 @@ CORS_ALLOW_CREDENTIALS = False
 SPECTACULAR_SETTINGS = {
     "TITLE": "Forum Platform API",
     "DESCRIPTION": "Stable API contract for Forum Platform Web, Android and iOS clients.",
-    "VERSION": "0.8.3",
+    "VERSION": "0.8.5",
     "SERVE_INCLUDE_SCHEMA": False,
     "OAS_VERSION": "3.1.0",
     "COMPONENT_SPLIT_REQUEST": True,
@@ -220,6 +225,10 @@ SPECTACULAR_SETTINGS = {
         "ReportStatusEnum": REPORT_STATUS_CHOICES,
         "ReportTargetTypeEnum": REPORT_TARGET_TYPE_CHOICES,
         "ModerationActionTargetTypeEnum": MODERATION_ACTION_TARGET_TYPE_CHOICES,
+        "IdentityTierEnum": IDENTITY_TIER_CHOICES,
+        "IdentityAccentEnum": IDENTITY_ACCENT_CHOICES,
+        "IdentityFrameUnlockEnum": IDENTITY_FRAME_UNLOCK_CHOICES,
+        "IdentityBadgeRuleEnum": IDENTITY_BADGE_RULE_CHOICES,
     },
     "SWAGGER_UI_SETTINGS": {
         "persistAuthorization": True,

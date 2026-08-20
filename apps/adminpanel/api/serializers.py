@@ -12,6 +12,8 @@ class AdminUserSerializer(serializers.ModelSerializer):
     id = serializers.UUIDField(source="public_id", read_only=True)
     publication_count = serializers.IntegerField(read_only=True, default=0)
     comment_count = serializers.IntegerField(read_only=True, default=0)
+    reputation = serializers.SerializerMethodField()
+    level = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -19,8 +21,20 @@ class AdminUserSerializer(serializers.ModelSerializer):
             "id", "nickname", "email", "first_name", "last_name", "country",
             "nationality", "interface_language", "bio", "is_active", "is_staff",
             "is_superuser", "date_joined", "last_login", "publication_count",
-            "comment_count",
+            "comment_count", "reputation", "level",
         ]
+
+    def get_reputation(self, obj):
+        try:
+            return obj.identity_profile.reputation
+        except Exception:
+            return 0
+
+    def get_level(self, obj):
+        try:
+            return obj.identity_profile.level
+        except Exception:
+            return 1
 
 
 class AdminUserUpdateSerializer(serializers.Serializer):
@@ -36,6 +50,8 @@ class AdminPublicationSerializer(serializers.ModelSerializer):
     excerpt = serializers.SerializerMethodField()
     report_count = serializers.IntegerField(read_only=True, default=0)
     comment_count = serializers.IntegerField(read_only=True, default=0)
+    reputation = serializers.SerializerMethodField()
+    level = serializers.SerializerMethodField()
 
     class Meta:
         model = Publication

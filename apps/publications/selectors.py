@@ -1,4 +1,4 @@
-from django.db.models import BooleanField, Exists, OuterRef, Q, Value
+from django.db.models import BooleanField, Count, Exists, OuterRef, Q, Value
 
 from apps.publications.models import Publication
 from apps.social.models import UserBlock, UserMute
@@ -8,8 +8,21 @@ def publication_queryset(viewer=None, *, hide_muted=False):
     queryset = (
         Publication.objects
         .filter(visibility=Publication.Visibility.PUBLISHED)
-        .select_related("author", "community")
+        .select_related(
+            "author",
+            "author__avatar_asset",
+            "author__banner_asset",
+            "author__identity_profile__equipped_frame",
+            "community",
+        )
         .prefetch_related("tags", "media_links__asset")
+        .annotate(
+            comment_count=Count(
+                "comments",
+                filter=Q(comments__visibility="published"),
+                distinct=True,
+            )
+        )
     )
 
     if viewer is not None and viewer.is_authenticated:

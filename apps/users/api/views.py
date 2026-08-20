@@ -10,6 +10,7 @@ from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from apps.core.throttling import AuthRateThrottle
 from apps.social.selectors import user_profile_queryset
 from apps.users.services import create_token_pair
+from apps.identity.services import sync_identity_state
 from .serializers import (
     LoginSerializer,
     LogoutSerializer,
@@ -61,6 +62,7 @@ class MeView(generics.RetrieveUpdateAPIView):
     serializer_class = UserMeSerializer
 
     def get_object(self):
+        sync_identity_state(self.request.user)
         return self.request.user
 
 
@@ -71,7 +73,12 @@ class UserDetailView(generics.RetrieveAPIView):
     lookup_url_kwarg = "user_id"
 
     def get_queryset(self):
-        return user_profile_queryset(self.request.user)
+        return user_profile_queryset(self.request.user).select_related("identity_profile__equipped_frame")
+
+    def get_object(self):
+        user = super().get_object()
+        sync_identity_state(user)
+        return user
 
 
 @extend_schema_view(

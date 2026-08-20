@@ -5,9 +5,14 @@ from apps.users.models import User
 
 
 def user_profile_queryset(viewer):
-    queryset = User.objects.filter(is_active=True).annotate(
-        follower_count=Count("follower_edges", distinct=True),
-        following_count=Count("following_edges", distinct=True),
+    queryset = (
+        User.objects
+        .filter(is_active=True)
+        .select_related("avatar_asset", "banner_asset", "identity_profile__equipped_frame")
+        .annotate(
+            follower_count=Count("follower_edges", distinct=True),
+            following_count=Count("following_edges", distinct=True),
+        )
     )
 
     if viewer.is_authenticated:

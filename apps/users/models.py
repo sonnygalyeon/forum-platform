@@ -43,6 +43,20 @@ class User(AbstractUser):
     nationality = models.CharField(max_length=2)
     interface_language = models.CharField(max_length=10, default="en")
     bio = models.TextField(max_length=1000, blank=True)
+    avatar_asset = models.ForeignKey(
+        "media.MediaAsset",
+        on_delete=models.SET_NULL,
+        related_name="avatar_users",
+        null=True,
+        blank=True,
+    )
+    banner_asset = models.ForeignKey(
+        "media.MediaAsset",
+        on_delete=models.SET_NULL,
+        related_name="banner_users",
+        null=True,
+        blank=True,
+    )
     updated_at = models.DateTimeField(auto_now=True)
 
     USERNAME_FIELD = "nickname"

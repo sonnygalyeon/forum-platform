@@ -34,10 +34,14 @@ class PublicationListCreateView(generics.ListCreateAPIView):
         serializer = PublicationCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
-        publication = create_publication(
-            author=request.user, kind=data["type"], title=data["title"], content=data["content"],
-            community=data["community"], tag_names=data["tags"],
-        )
+        try:
+            publication = create_publication(
+                author=request.user, kind=data["type"], title=data["title"], content=data["content"],
+                community=data["community"], tag_names=data["tags"],
+            )
+        except ValueError as exc:
+            from rest_framework import serializers as drf_serializers
+            raise drf_serializers.ValidationError({"content": str(exc)}) from exc
         publication = publication_queryset(request.user).get(pk=publication.pk)
         return Response(PublicationDetailSerializer(publication, context={"request": request}).data, status=status.HTTP_201_CREATED)
 
@@ -58,7 +62,11 @@ class PublicationDetailView(mixins.RetrieveModelMixin, mixins.UpdateModelMixin, 
         changes = dict(serializer.validated_data)
         if "tags" in changes:
             changes["tag_names"] = changes.pop("tags")
-        publication = update_publication(publication=publication, editor=request.user, changes=changes)
+        try:
+            publication = update_publication(publication=publication, editor=request.user, changes=changes)
+        except ValueError as exc:
+            from rest_framework import serializers as drf_serializers
+            raise drf_serializers.ValidationError({"content": str(exc)}) from exc
         publication = publication_queryset(request.user).get(pk=publication.pk)
         return Response(PublicationDetailSerializer(publication, context={"request": request}).data)
 

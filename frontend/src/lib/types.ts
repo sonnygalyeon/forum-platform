@@ -1,3 +1,57 @@
+export type IdentityFrame = {
+  id: string;
+  slug: string;
+  name: string;
+  description: string;
+  tier: "base" | "rare" | "epic" | "legendary" | "staff";
+  style_token: string;
+  unlock_type: "free" | "reputation" | "badge" | "staff";
+  unlock_value: number;
+  required_badge_slug: string;
+  sort_order: number;
+};
+
+export type IdentityBadge = {
+  id: string;
+  slug: string;
+  name: string;
+  description: string;
+  tier: "base" | "rare" | "epic" | "legendary" | "staff";
+  icon_key: string;
+  rule_type: string;
+  threshold: number;
+  sort_order: number;
+};
+
+export type OwnedFrame = { frame: IdentityFrame; source: string; unlocked_at: string };
+export type OwnedBadge = { badge: IdentityBadge; pinned: boolean; pin_order: number; source: string; awarded_at: string };
+export type UserIdentity = {
+  headline: string;
+  accent: "emerald" | "jade" | "ice" | "violet";
+  reputation: number;
+  level: number;
+  equipped_frame: IdentityFrame | null;
+  badges: OwnedBadge[];
+  updated_at: string | null;
+};
+export type MyIdentity = UserIdentity & { owned_frames: OwnedFrame[]; owned_badges: OwnedBadge[] };
+
+export type MediaAsset = {
+  id: string;
+  original_name?: string;
+  name?: string;
+  declared_content_type?: string;
+  content_type?: string;
+  kind: "image" | "video" | "file";
+  size_bytes: number;
+  part_size?: number;
+  part_count?: number;
+  status: "uploading" | "pending_scan" | "ready" | "aborted" | "rejected";
+  url: string | null;
+  created_at?: string;
+  completed_at?: string | null;
+};
+
 export type User = {
   id: string;
   nickname: string;
@@ -8,6 +62,9 @@ export type User = {
   nationality: string;
   interface_language?: string;
   bio: string;
+  avatar: MediaAsset | null;
+  banner: MediaAsset | null;
+  identity: UserIdentity;
   date_joined: string;
   follower_count?: number;
   following_count?: number;
@@ -25,6 +82,7 @@ export type Community = CommunityCompact & {
   description: string;
   owner: User;
   subscriber_count: number;
+  publication_count: number;
   is_subscribed: boolean;
   created_at: string;
 };
@@ -38,6 +96,18 @@ export type ContentBlock =
   | { type: "video"; asset_id: string; caption?: string }
   | { type: "attachment"; asset_id: string; caption?: string };
 
+export type PublicationMedia = {
+  asset_id: string;
+  role: "preview_image" | "preview_video" | "attachment" | "inline" | string;
+  sort_order: number;
+  name: string;
+  kind: "image" | "video" | "file";
+  content_type: string;
+  size_bytes: number;
+  status: string;
+  url: string | null;
+};
+
 export type Publication = {
   id: string;
   type: "post" | "article" | "topic";
@@ -48,12 +118,19 @@ export type Publication = {
   tags: Tag[];
   revision: number;
   is_edited: boolean;
+  comment_count: number;
   created_at: string;
   updated_at: string;
   content?: ContentBlock[];
+  media?: PublicationMedia[];
   can_edit?: boolean;
   can_interact?: boolean;
 };
+
+export type CommentBlock =
+  | { type: "paragraph"; text: string }
+  | { type: "quote"; text: string }
+  | { type: "code"; code: string; language?: string };
 
 export type Comment = {
   id: string;
@@ -61,11 +138,7 @@ export type Comment = {
   kind: "answer" | "comment" | "reply";
   author: User;
   parent_id: string | null;
-  content: Array<
-    | { type: "paragraph"; text: string }
-    | { type: "quote"; text: string }
-    | { type: "code"; code: string; language?: string }
-  >;
+  content: CommentBlock[];
   depth: number;
   score: number;
   my_vote: -1 | 1 | null;
@@ -77,6 +150,7 @@ export type Comment = {
   can_edit: boolean;
   created_at: string;
   updated_at: string;
+  publication?: { id: string; type: string; title: string; created_at: string };
 };
 
 export type Notification = {
@@ -90,6 +164,19 @@ export type Notification = {
   read_at: string | null;
   created_at: string;
 };
+
+export type NotificationPreferences = {
+  followed_user_publications: boolean;
+  community_publications: boolean;
+  publication_responses: boolean;
+  comment_replies: boolean;
+  accepted_answers: boolean;
+  new_followers: boolean;
+  moderation_updates: boolean;
+  updated_at: string;
+};
+
+export type SocialUserEdge = { user: User; followed_at?: string; blocked_at?: string; muted_at?: string };
 
 export type CursorPage<T> = {
   next: string | null;
@@ -107,7 +194,7 @@ export type AdminOverview = {
   reports: { open: number; reviewing: number; resolved_last_7d: number };
   notification_events: { pending: number; failed: number };
 };
-export type AdminUser = User & { is_active: boolean; is_staff: boolean; is_superuser: boolean; last_login: string | null; publication_count: number; comment_count: number };
+export type AdminUser = User & { is_active: boolean; is_staff: boolean; is_superuser: boolean; last_login: string | null; publication_count: number; comment_count: number; reputation: number; level: number };
 export type AdminPublication = { id:string; type:string; title:string; excerpt:string; author:User; community:CommunityCompact|null; visibility:"published"|"hidden"; current_revision:number; report_count:number; comment_count:number; created_at:string; updated_at:string };
 export type AdminComment = { id:string; publication:{id:string;title:string;type:string}; author:User; parent_id:string|null; kind:string; excerpt:string; depth:number; visibility:"published"|"hidden"; score:number; is_accepted:boolean; report_count:number; created_at:string; updated_at:string };
 export type AdminCommunity = { id:string; slug:string; name:string; description:string; owner:User; is_active:boolean; subscriber_count:number; publication_count:number; created_at:string; updated_at:string };

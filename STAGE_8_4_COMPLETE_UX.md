@@ -48,3 +48,21 @@ The browser never sends large files through Django/Next.js. It requests a multip
 - full-text search UI;
 - production deployment hardening;
 - richer community roles and permissions.
+
+## 8.4 fixed
+
+`apps/moderation/models.py` now explicitly preserves the index names from
+`moderation/0001_initial.py`. This avoids an unnecessary migration containing
+only `RenameIndex` operations when using Django 5.2.17.
+
+Expected verification:
+
+```bash
+docker compose run --rm api python manage.py makemigrations --check --dry-run
+```
+
+should report:
+
+```text
+No changes detected
+```

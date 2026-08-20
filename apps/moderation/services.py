@@ -122,6 +122,8 @@ def set_publication_hidden(*, publication, moderator, hidden, reason="", report=
         reason=reason.strip(),
         report=report,
     )
+    from apps.identity.services import sync_identity_state
+    sync_identity_state(publication.author)
     return publication, True
 
 
@@ -158,4 +160,6 @@ def set_comment_hidden(*, comment, moderator, hidden, reason="", report=None):
         reason=reason.strip(),
         report=report,
     )
+    from apps.identity.services import sync_identity_state
+    sync_identity_state(comment.author)
     return comment, True

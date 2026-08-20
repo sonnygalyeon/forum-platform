@@ -65,6 +65,8 @@ def create_root_comment(*, publication, author, content):
         publication=publication,
         comment=comment,
     )
+    from apps.identity.services import sync_identity_state
+    sync_identity_state(author)
     return comment
 
 
@@ -200,6 +202,8 @@ def set_comment_vote(*, comment, user, value):
     comment.score += delta
     comment.save(update_fields=["score"])
 
+    from apps.identity.services import sync_identity_state
+    sync_identity_state(comment.author)
     return comment, value
 
 
@@ -226,6 +230,8 @@ def remove_comment_vote(*, comment, user):
     vote.delete()
     comment.save(update_fields=["score"])
 
+    from apps.identity.services import sync_identity_state
+    sync_identity_state(comment.author)
     return comment
 
 @transaction.atomic
@@ -301,6 +307,10 @@ def accept_answer(*, answer, actor):
             comment=answer,
         )
 
+    from apps.identity.services import sync_identity_state
+    sync_identity_state(answer.author)
+    if previous is not None:
+        sync_identity_state(previous.author)
     return answer
 
 
@@ -334,5 +344,7 @@ def unaccept_answer(*, answer, actor):
         answer.is_accepted = False
         answer.save(update_fields=["is_accepted"])
 
+    from apps.identity.services import sync_identity_state
+    sync_identity_state(answer.author)
     return answer
 

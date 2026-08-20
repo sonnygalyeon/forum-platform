@@ -97,7 +97,7 @@ class AdminUserListView(generics.ListAPIView):
     pagination_class = AdminLimitOffsetPagination
 
     def get_queryset(self):
-        queryset = User.objects.annotate(
+        queryset = User.objects.select_related("identity_profile").annotate(
             publication_count=Count("publications", distinct=True),
             comment_count=Count("comments", distinct=True),
         ).order_by("-date_joined")
@@ -125,7 +125,7 @@ class AdminUserDetailView(APIView):
 
     def get_user(self, user_id):
         return get_object_or_404(
-            User.objects.annotate(
+            User.objects.select_related("identity_profile").annotate(
                 publication_count=Count("publications", distinct=True),
                 comment_count=Count("comments", distinct=True),
             ),

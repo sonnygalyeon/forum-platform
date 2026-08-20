@@ -63,3 +63,36 @@ MODERATION_ACTION_TARGET_TYPE_CHOICES = [
     ("publication", "Publication"),
     ("comment", "Comment"),
 ]
+
+IDENTITY_TIER_CHOICES = [
+    ("base", "Base"),
+    ("rare", "Rare"),
+    ("epic", "Epic"),
+    ("legendary", "Legendary"),
+    ("staff", "Staff"),
+]
+
+IDENTITY_ACCENT_CHOICES = [
+    ("emerald", "Emerald"),
+    ("jade", "Jade"),
+    ("ice", "Ice"),
+    ("violet", "Violet"),
+]
+
+IDENTITY_FRAME_UNLOCK_CHOICES = [
+    ("free", "Free"),
+    ("reputation", "Reputation"),
+    ("badge", "Badge"),
+    ("staff", "Staff"),
+]
+
+IDENTITY_BADGE_RULE_CHOICES = [
+    ("always", "Always"),
+    ("reputation", "Reputation"),
+    ("publications", "Publications"),
+    ("answers", "Answers"),
+    ("accepted", "Accepted answers"),
+    ("followers", "Followers"),
+    ("communities", "Owned communities"),
+    ("staff", "Staff"),
+]

@@ -11,15 +11,12 @@ const publicItems = [
 ];
 
 export function Sidebar() {
-  const pathname = usePathname();
-  const { user } = useAuth();
+  const pathname = usePathname(); const { user } = useAuth();
   const items = user ? [...publicItems,
     { href: "/new", label: "Создать", icon: PlusSquare },
     { href: "/notifications", label: "Уведомления", icon: Bell },
     { href: "/profile", label: "Профиль", icon: UserRound },
     ...(user.is_staff ? [{ href: "/admin", label: "Админка", icon: ShieldCheck }] : []),
   ] : publicItems;
-  return <aside className="sidebar"><div className="eyebrow">НАВИГАЦИЯ</div><nav>{items.map(({href,label,icon:Icon}) => (
-    <Link key={href} href={href} className={`nav-item ${pathname === href ? "nav-item-active" : ""}`}><Icon size={17}/>{label}</Link>
-  ))}</nav><div className="sidebar-note"><span className="status-dot"/> Реальные данные API<br/><small>Демо-контент отключён</small></div></aside>;
+  return <aside className="sidebar"><div className="eyebrow">НАВИГАЦИЯ</div><nav>{items.map(({href,label,icon:Icon}) => <Link key={href} href={href} className={`nav-item ${pathname === href || (href!=="/"&&pathname.startsWith(href)) ? "nav-item-active" : ""}`}><Icon size={17}/>{label}</Link>)}</nav><div className="sidebar-note"><span className="status-dot"/> Night Iris 0.8.5<br/><small>API-first · structured content</small></div></aside>;
 }

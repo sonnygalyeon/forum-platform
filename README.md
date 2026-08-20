@@ -1,3 +1,9 @@
+# Night Iris Forum 0.8.5 — Social Identity
+
+Current full project: Django API + Next.js frontend + custom administration + complete user UX. Stage 8.5 adds reputation, levels, achievements, safe avatar frames, profile accent presets, pinned badges, and followers/following screens. See `STAGE_8_5_SOCIAL_IDENTITY.md` for the exact rules and verification commands.
+
+---
+
 # Forum Platform 0.7.2 — Stage 7.2
 
 Stage 7.2 freezes the backend contract before Web frontend development.
@@ -389,3 +395,8 @@ Stage 7.2 is the backend stabilization checkpoint:
 - final endpoint naming and response contract pass.
 
 After Stage 7.2 the Web frontend can start without repeatedly redesigning its API integration layer. Android/iOS can reuse the same stable contract later.
+
+
+## Current project stage
+
+Stage **8.4 — Complete User Experience**. See `STAGE_8_4_COMPLETE_UX.md`.

@@ -107,7 +107,7 @@ class UserFollowersView(generics.ListAPIView):
         return (
             UserFollow.objects
             .filter(following=user)
-            .select_related("follower")
+            .select_related("follower", "follower__avatar_asset", "follower__banner_asset", "follower__identity_profile__equipped_frame")
             .order_by("-created_at")
         )
 
@@ -125,7 +125,7 @@ class UserFollowingView(generics.ListAPIView):
         return (
             UserFollow.objects
             .filter(follower=user)
-            .select_related("following")
+            .select_related("following", "following__avatar_asset", "following__banner_asset", "following__identity_profile__equipped_frame")
             .order_by("-created_at")
         )
 

@@ -2,10 +2,43 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, ChevronDown, ChevronUp, MessageCircle, Reply } from "lucide-react";
-import { FormEvent, useState } from "react";
+import { useState } from "react";
+import Link from "next/link";
 import { clientApi, errorMessage } from "@/lib/client-api";
-import type { Comment, CursorPage } from "@/lib/types";
+import type { Comment, CommentBlock, CursorPage } from "@/lib/types";
 import { useAuth } from "@/providers/auth-provider";
+import { UserAvatar } from "@/components/profile/user-avatar";
+import { CommentComposer } from "@/components/discussion/comment-composer";
 
-export function CommentItem({ comment, publicationId }: { comment:Comment; publicationId:string }){const {user}=useAuth();const qc=useQueryClient();const [showReplies,setShowReplies]=useState(false);const [reply,setReply]=useState("");const replies=useQuery({queryKey:["replies",comment.id],queryFn:()=>clientApi<CursorPage<Comment>>(`/comments/${comment.id}/replies/`),enabled:showReplies});const invalidate=()=>{qc.invalidateQueries({queryKey:["comments",publicationId]});qc.invalidateQueries({queryKey:["replies",comment.id]});};const replyMutation=useMutation({mutationFn:()=>clientApi<Comment>(`/comments/${comment.id}/replies/`,{method:"POST",body:JSON.stringify({content:[{type:"paragraph",text:reply.trim()}]})}),onSuccess:()=>{setReply("");setShowReplies(true);invalidate();}});const vote=useMutation({mutationFn:(value:-1|1)=>clientApi(`/comments/${comment.id}/vote/`,{method:"PUT",body:JSON.stringify({value})}),onSuccess:invalidate});const acceptance=useMutation({mutationFn:(method:"PUT"|"DELETE")=>clientApi(`/comments/${comment.id}/accepted/`,{method}),onSuccess:invalidate});function submit(e:FormEvent){e.preventDefault();if(reply.trim())replyMutation.mutate();}
-return <article className={`comment-card ${comment.is_accepted?"comment-accepted":""}`}><div className="comment-vote"><button disabled={!comment.can_vote||vote.isPending} onClick={()=>vote.mutate(1)} className={comment.my_vote===1?"active":""}><ChevronUp size={18}/></button><strong>{comment.score}</strong><button disabled={!comment.can_vote||vote.isPending} onClick={()=>vote.mutate(-1)} className={comment.my_vote===-1?"active down":""}><ChevronDown size={18}/></button>{comment.is_accepted?<Check className="accepted-mark" size={18}/>:null}</div><div className="comment-body"><div className="comment-author"><span className="avatar avatar-xs">{comment.author.nickname.slice(0,2).toUpperCase()}</span><strong>@{comment.author.nickname}</strong><time>{new Date(comment.created_at).toLocaleDateString("ru-RU")}</time>{comment.is_accepted?<span className="status-chip">Принятый ответ</span>:null}</div><div className="comment-content">{comment.content.map((block,i)=>block.type==="code"?<pre className="code-block" key={i}><code>{block.code}</code></pre>:block.type==="quote"?<blockquote key={i}>{block.text}</blockquote>:<p key={i}>{block.text}</p>)}</div><div className="comment-actions">{comment.reply_count>0?<button onClick={()=>setShowReplies(v=>!v)}><MessageCircle size={14}/>{showReplies?"Скрыть":`Ответы (${comment.reply_count})`}</button>:null}{user?<button onClick={()=>setShowReplies(true)}><Reply size={14}/>Ответить</button>:null}{comment.can_accept?<button onClick={()=>acceptance.mutate("PUT")}><Check size={14}/>Принять ответ</button>:null}{comment.can_unaccept?<button onClick={()=>acceptance.mutate("DELETE")}>Снять принятие</button>:null}</div>{showReplies?<div className="reply-zone">{replies.data?.results.map(item=><CommentItem key={item.id} comment={item} publicationId={publicationId}/>)}{user?<form className="reply-composer" onSubmit={submit}><input value={reply} onChange={e=>setReply(e.target.value)} placeholder={`Ответить @${comment.author.nickname}…`}/><button disabled={replyMutation.isPending}>Отправить</button></form>:null}{replyMutation.isError?<div className="form-error">{errorMessage(replyMutation.error)}</div>:null}</div>:null}</div></article>}
+export function CommentItem({ comment, publicationId }: { comment: Comment; publicationId: string }) {
+  const { user } = useAuth();
+  const qc = useQueryClient();
+  const [showReplies, setShowReplies] = useState(false);
+  const replies = useQuery({ queryKey: ["replies", comment.id], queryFn: () => clientApi<CursorPage<Comment>>(`/comments/${comment.id}/replies/`), enabled: showReplies });
+  const invalidate = () => { qc.invalidateQueries({ queryKey: ["comments", publicationId] }); qc.invalidateQueries({ queryKey: ["replies", comment.id] }); };
+  const replyMutation = useMutation({ mutationFn: (content: CommentBlock[]) => clientApi<Comment>(`/comments/${comment.id}/replies/`, { method: "POST", body: JSON.stringify({ content }) }), onSuccess: () => { setShowReplies(true); invalidate(); } });
+  const vote = useMutation({ mutationFn: (value: -1 | 1) => clientApi(`/comments/${comment.id}/vote/`, { method: "PUT", body: JSON.stringify({ value }) }), onSuccess: invalidate });
+  const acceptance = useMutation({ mutationFn: (method: "PUT" | "DELETE") => clientApi(`/comments/${comment.id}/accepted/`, { method }), onSuccess: invalidate });
+
+  return (
+    <article className={`comment-card ${comment.is_accepted ? "comment-accepted" : ""}`}>
+      <div className="comment-vote">
+        <button disabled={!comment.can_vote || vote.isPending} onClick={() => vote.mutate(1)} className={comment.my_vote === 1 ? "active" : ""}><ChevronUp size={18}/></button>
+        <strong>{comment.score}</strong>
+        <button disabled={!comment.can_vote || vote.isPending} onClick={() => vote.mutate(-1)} className={comment.my_vote === -1 ? "active down" : ""}><ChevronDown size={18}/></button>
+        {comment.is_accepted ? <Check className="accepted-mark" size={18}/> : null}
+      </div>
+      <div className="comment-body">
+        <div className="comment-author"><Link href={`/users/${comment.author.id}`} className="author-link"><UserAvatar user={comment.author} size="xs"/><strong>@{comment.author.nickname}</strong></Link><time>{new Date(comment.created_at).toLocaleDateString("ru-RU")}</time>{comment.is_accepted ? <span className="status-chip">Принятый ответ</span> : null}</div>
+        <div className="comment-content">{comment.content.map((block, i) => block.type === "code" ? <pre className="code-block" key={i}><div className="code-language">{block.language || "code"}</div><code>{block.code}</code></pre> : block.type === "quote" ? <blockquote key={i}>{block.text}</blockquote> : <p key={i}>{block.text}</p>)}</div>
+        <div className="comment-actions">
+          {comment.reply_count > 0 ? <button onClick={() => setShowReplies(v => !v)}><MessageCircle size={14}/>{showReplies ? "Скрыть" : `Ответы (${comment.reply_count})`}</button> : null}
+          {user ? <button onClick={() => setShowReplies(true)}><Reply size={14}/>Ответить</button> : null}
+          {comment.can_accept ? <button onClick={() => acceptance.mutate("PUT")}><Check size={14}/>Принять ответ</button> : null}
+          {comment.can_unaccept ? <button onClick={() => acceptance.mutate("DELETE")}>Снять принятие</button> : null}
+        </div>
+        {showReplies ? <div className="reply-zone">{replies.data?.results.map(item => <CommentItem key={item.id} comment={item} publicationId={publicationId}/>)}{user ? <CommentComposer compact placeholder={`Ответить @${comment.author.nickname}…`} busy={replyMutation.isPending} onSubmit={async blocks => { await replyMutation.mutateAsync(blocks); }}/> : null}{replyMutation.isError ? <div className="form-error">{errorMessage(replyMutation.error)}</div> : null}</div> : null}
+      </div>
+    </article>
+  );
+}

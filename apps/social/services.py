@@ -38,14 +38,19 @@ def follow_user(*, follower, following):
             actor=follower,
             target_user=following,
         )
+        from apps.identity.services import sync_identity_state
+        sync_identity_state(following)
     return edge, created
 
 
 def unfollow_user(*, follower, following):
-    UserFollow.objects.filter(
+    deleted, _ = UserFollow.objects.filter(
         follower=follower,
         following=following,
     ).delete()
+    if deleted:
+        from apps.identity.services import sync_identity_state
+        sync_identity_state(following)
 
 
 @transaction.atomic
@@ -59,10 +64,14 @@ def block_user(*, blocker, blocked):
     )
 
     # Blocking terminates the social connection in both directions.
-    UserFollow.objects.filter(
+    deleted_follows, _ = UserFollow.objects.filter(
         Q(follower=blocker, following=blocked)
         | Q(follower=blocked, following=blocker)
     ).delete()
+    if deleted_follows:
+        from apps.identity.services import sync_identity_state
+        sync_identity_state(blocker)
+        sync_identity_state(blocked)
 
     # Mute is redundant while the stronger local block is active.
     UserMute.objects.filter(

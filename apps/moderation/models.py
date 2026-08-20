@@ -101,9 +101,18 @@ class Report(models.Model):
             ),
         ]
         indexes = [
-            models.Index(fields=["status", "-created_at"]),
-            models.Index(fields=["target_type", "status", "-created_at"]),
-            models.Index(fields=["reporter", "-created_at"]),
+            models.Index(
+                fields=["status", "-created_at"],
+                name="moderation_status_1f391d_idx",
+            ),
+            models.Index(
+                fields=["target_type", "status", "-created_at"],
+                name="moderation_target__d39f1b_idx",
+            ),
+            models.Index(
+                fields=["reporter", "-created_at"],
+                name="moderation_reporte_60cc65_idx",
+            ),
         ]
 
     def __str__(self):
@@ -163,8 +172,14 @@ class ModerationAction(models.Model):
             ),
         ]
         indexes = [
-            models.Index(fields=["target_type", "-created_at"]),
-            models.Index(fields=["actor", "-created_at"]),
+            models.Index(
+                fields=["target_type", "-created_at"],
+                name="moderation_target__43b01d_idx",
+            ),
+            models.Index(
+                fields=["actor", "-created_at"],
+                name="moderation_actor_i_51ed92_idx",
+            ),
         ]
 
     def __str__(self):
