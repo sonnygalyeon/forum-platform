@@ -30,10 +30,13 @@ export type Community = CommunityCompact & {
 };
 
 export type ContentBlock =
-  | { type: "paragraph" | "quote"; text: string }
+  | { type: "paragraph"; text: string }
+  | { type: "quote"; text: string }
   | { type: "heading"; text: string; level: 1 | 2 | 3 | 4 }
   | { type: "code"; code: string; language?: string }
-  | { type: "image" | "video" | "attachment"; asset_id: string; caption?: string };
+  | { type: "image"; asset_id: string; caption?: string }
+  | { type: "video"; asset_id: string; caption?: string }
+  | { type: "attachment"; asset_id: string; caption?: string };
 
 export type Publication = {
   id: string;
@@ -58,7 +61,11 @@ export type Comment = {
   kind: "answer" | "comment" | "reply";
   author: User;
   parent_id: string | null;
-  content: Array<{ type: "paragraph" | "quote"; text: string } | { type: "code"; code: string; language?: string }>;
+  content: Array<
+    | { type: "paragraph"; text: string }
+    | { type: "quote"; text: string }
+    | { type: "code"; code: string; language?: string }
+  >;
   depth: number;
   score: number;
   my_vote: -1 | 1 | null;
