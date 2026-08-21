@@ -1,4 +1,4 @@
-.PHONY: up down build bootstrap check migrations migrate storage logs worker-logs beat-logs api-validate smoke schema
+.PHONY: up down build bootstrap check migrations migrate storage logs worker-logs beat-logs api-validate smoke schema prod-init prod-config prod-up prod-down prod-logs prod-backup prod-smoke
 
 up:
 	docker compose up -d
@@ -41,3 +41,24 @@ schema:
 
 smoke:
 	sh scripts/smoke_api.sh
+
+prod-config:
+	./scripts/prod_config_check.sh
+
+prod-up:
+	./scripts/deploy_prod.sh
+
+prod-down:
+	docker compose --env-file .env.prod -f compose.prod.yaml down
+
+prod-logs:
+	docker compose --env-file .env.prod -f compose.prod.yaml logs -f caddy api frontend worker beat
+
+prod-backup:
+	./scripts/backup_all.sh
+
+prod-smoke:
+	./scripts/prod_smoke.sh
+
+prod-init:
+	./scripts/init_prod_env.sh

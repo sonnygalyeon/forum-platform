@@ -1,0 +1,10 @@
+[Unit]
+Description=Night Iris Forum backup
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/night-iris/forum_platform
+Environment=ENV_FILE=.env.prod
+ExecStart=/opt/night-iris/forum_platform/scripts/backup_all.sh

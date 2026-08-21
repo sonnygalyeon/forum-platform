@@ -400,3 +400,15 @@ After Stage 7.2 the Web frontend can start without repeatedly redesigning its AP
 ## Current project stage
 
 Stage **8.4 — Complete User Experience**. See `STAGE_8_4_COMPLETE_UX.md`.
+
+## Production (Stage 8.7)
+
+Production deployment is separated into `compose.prod.yaml` and `.env.prod`.
+See `STAGE_8_7_PRODUCTION_FOUNDATION.md`.
+
+```bash
+cp .env.prod.example .env.prod
+# fill real domains and secrets
+./scripts/prod_config_check.sh
+./scripts/deploy_prod.sh
+```

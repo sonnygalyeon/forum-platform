@@ -1,0 +1,42 @@
+{
+    email {$ACME_EMAIL}
+}
+
+{$APP_DOMAIN} {
+    encode zstd gzip
+
+    log {
+        output stdout
+        format json
+    }
+
+    header {
+        -Server
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        Permissions-Policy "camera=(), microphone=(), geolocation=()"
+        Strict-Transport-Security "max-age=31536000; includeSubDomains"
+    }
+
+    @django path /api/v1/* /api/schema/* /api/docs/* /api/redoc/* /static/*
+    reverse_proxy @django api:8000
+
+    reverse_proxy frontend:3000
+}
+
+{$MEDIA_DOMAIN} {
+    encode zstd gzip
+
+    log {
+        output stdout
+        format json
+    }
+
+    header {
+        -Server
+        X-Content-Type-Options "nosniff"
+    }
+
+    reverse_proxy minio:9000
+}
