@@ -96,3 +96,14 @@ IDENTITY_BADGE_RULE_CHOICES = [
     ("communities", "Owned communities"),
     ("staff", "Staff"),
 ]
+
+MESSENGER_CONVERSATION_KIND_CHOICES = [
+    ("direct", "Direct"),
+    ("group", "Group"),
+]
+
+MESSENGER_MEMBER_ROLE_CHOICES = [
+    ("owner", "Owner"),
+    ("admin", "Admin"),
+    ("member", "Member"),
+]

@@ -1,6 +1,6 @@
 [project]
 name = "forum-platform"
-version = "0.8.7"
+version = "0.8.8"
 description = "API-first forum platform built with Django REST Framework"
 requires-python = ">=3.13,<3.14"
 dependencies = [
@@ -15,6 +15,9 @@ dependencies = [
     "django-cors-headers>=4.9,<5",
     "gunicorn>=23,<24",
     "whitenoise>=6.9,<7",
+    "channels>=4.2,<5",
+    "channels-redis>=4.2,<5",
+    "daphne>=4.2,<5",
 ]
 
 [tool.uv]

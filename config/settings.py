@@ -12,6 +12,8 @@ from openapi_enums import (
     IDENTITY_TIER_CHOICES,
     MEDIA_ASSET_KIND_CHOICES,
     MEDIA_ASSET_STATUS_CHOICES,
+    MESSENGER_CONVERSATION_KIND_CHOICES,
+    MESSENGER_MEMBER_ROLE_CHOICES,
     MODERATION_ACTION_TARGET_TYPE_CHOICES,
     NOTIFICATION_EVENT_STATUS_CHOICES,
     NOTIFICATION_KIND_CHOICES,
@@ -32,6 +34,7 @@ ALLOWED_HOSTS = [
 ]
 
 INSTALLED_APPS = [
+    "daphne",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -47,6 +50,7 @@ INSTALLED_APPS = [
     "apps.users",
     "apps.identity",
     "apps.discovery",
+    "apps.messenger",
     "apps.communities",
     "apps.social",
     "apps.publications",
@@ -197,6 +201,7 @@ DATA_UPLOAD_MAX_MEMORY_SIZE = 2 * 1024 * 1024
 
 
 REDIS_CACHE_URL = os.environ.get("REDIS_CACHE_URL", "redis://redis:6379/1")
+CHANNEL_REDIS_URL = os.environ.get("CHANNEL_REDIS_URL", "redis://redis:6379/2")
 CELERY_BROKER_URL = os.environ.get("CELERY_BROKER_URL", "redis://redis:6379/0")
 CELERY_TASK_IGNORE_RESULT = True
 CELERY_TASK_TRACK_STARTED = False
@@ -208,6 +213,13 @@ CELERY_BEAT_SCHEDULE = {
         "task": "apps.notifications.tasks.recover_pending_notification_events",
         "schedule": 60.0,
     },
+}
+
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {"hosts": [CHANNEL_REDIS_URL]},
+    }
 }
 
 CACHES = {
@@ -235,7 +247,7 @@ CORS_ALLOW_CREDENTIALS = False
 SPECTACULAR_SETTINGS = {
     "TITLE": "Forum Platform API",
     "DESCRIPTION": "Stable API contract for Forum Platform Web, Android and iOS clients.",
-    "VERSION": "0.8.7",
+    "VERSION": "0.8.8",
     "SERVE_INCLUDE_SCHEMA": False,
     "OAS_VERSION": "3.1.0",
     "COMPONENT_SPLIT_REQUEST": True,
@@ -256,6 +268,8 @@ SPECTACULAR_SETTINGS = {
         "IdentityAccentEnum": IDENTITY_ACCENT_CHOICES,
         "IdentityFrameUnlockEnum": IDENTITY_FRAME_UNLOCK_CHOICES,
         "IdentityBadgeRuleEnum": IDENTITY_BADGE_RULE_CHOICES,
+        "MessengerConversationKindEnum": MESSENGER_CONVERSATION_KIND_CHOICES,
+        "MessengerMemberRoleEnum": MESSENGER_MEMBER_ROLE_CHOICES,
     },
     "SWAGGER_UI_SETTINGS": {
         "persistAuthorization": True,

@@ -19,6 +19,9 @@
         Strict-Transport-Security "max-age=31536000; includeSubDomains"
     }
 
+    @websocket path /ws/*
+    reverse_proxy @websocket api:8000
+
     @django path /api/v1/* /api/schema/* /api/docs/* /api/redoc/* /static/*
     reverse_proxy @django api:8000
 

@@ -219,3 +219,20 @@ export type AdminComment = { id:string; publication:{id:string;title:string;type
 export type AdminCommunity = { id:string; slug:string; name:string; description:string; owner:User; is_active:boolean; subscriber_count:number; publication_count:number; created_at:string; updated_at:string };
 export type AdminReport = { id:string; reporter:User; target_type:"publication"|"comment"|"user"; target_id:string|null; target_label:string; reason:string; details:string; status:"open"|"reviewing"|"resolved"|"dismissed"; moderator:User|null; resolution_note:string; created_at:string; updated_at:string; resolved_at:string|null };
 export type AdminModerationAction = { id:string; actor:User; target_type:string; target_id:string|null; target_label:string; action:string; reason:string; report_id:string|null; created_at:string };
+
+
+export type MessengerMember = { user: User; role: "owner" | "admin" | "member"; joined_at: string; is_muted: boolean; is_archived: boolean; online: boolean };
+export type MessengerReaction = { emoji: string; count: number; reacted_by_me: boolean };
+export type MessengerReplyPreview = { id: string; sender_nickname: string; text: string; deleted: boolean };
+export type MessengerMessage = {
+  id: string; conversation_id: string; sender: User; client_id: string; text: string;
+  reply_to: MessengerReplyPreview | null; attachments: MediaAsset[]; reactions: MessengerReaction[]; read_by_count: number;
+  deleted: boolean; created_at: string; edited_at: string | null; deleted_at: string | null;
+};
+export type MessengerConversation = {
+  id: string; kind: "direct" | "group"; title: string; display_title: string; members: MessengerMember[];
+  last_message: { id:string; sender_id:string; sender_nickname:string; text:string; created_at:string; deleted:boolean } | null;
+  unread_count: number; is_muted: boolean; is_archived: boolean; created_at: string; updated_at: string; last_message_at: string | null;
+};
+export type MessengerMessagesPage = { next_before: string | null; results: MessengerMessage[] };
+export type MessengerSocketEvent = { type: string; conversation_id?: string; message_id?: string; user_id?: string; nickname?: string; active?: boolean; sender_id?: string };

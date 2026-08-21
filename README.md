@@ -412,3 +412,8 @@ cp .env.prod.example .env.prod
 ./scripts/prod_config_check.sh
 ./scripts/deploy_prod.sh
 ```
+
+
+## Messenger
+
+Stage 8.8 adds realtime direct/group messaging. Open `http://localhost:3000/messages` after login. Persistent data uses REST/PostgreSQL; realtime uses Django Channels + Redis.

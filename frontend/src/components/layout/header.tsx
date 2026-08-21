@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Bell, LogIn, Plus, Search, ShieldCheck, UserRound } from "lucide-react";
+import { Bell, LogIn, MessageCircle, Plus, Search, ShieldCheck, UserRound } from "lucide-react";
 import { NightIrisMark } from "@/components/brand/night-iris-mark";
 import { UserAvatar } from "@/components/profile/user-avatar";
 import { ThemeToggle } from "./theme-toggle";
@@ -26,6 +26,7 @@ export function Header() {
           {!loading && user ? (
             <>
               <Link href="/new" className="primary-button compact-button"><Plus size={15}/> Создать</Link>
+              <Link href="/messages" className="icon-button" aria-label="Сообщения"><MessageCircle size={17}/></Link>
               <Link href="/notifications" className="icon-button" aria-label="Уведомления"><Bell size={17}/></Link>
               <Link href="/profile" aria-label="Профиль"><UserAvatar user={user} size="sm"/></Link>
             </>
