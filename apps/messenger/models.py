@@ -2,7 +2,6 @@ import uuid
 
 from django.conf import settings
 from django.db import models
-from django.db.models import Q
 
 
 class Conversation(models.Model):
@@ -21,6 +20,13 @@ class Conversation(models.Model):
         blank=True,
     )
     direct_key = models.CharField(max_length=64, unique=True, null=True, blank=True)
+    pinned_message = models.ForeignKey(
+        "Message",
+        on_delete=models.SET_NULL,
+        related_name="pinned_for_conversations",
+        null=True,
+        blank=True,
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     last_message_at = models.DateTimeField(null=True, blank=True)
@@ -40,6 +46,28 @@ class ConversationMember(models.Model):
         OWNER = "owner", "Owner"
         ADMIN = "admin", "Admin"
         MEMBER = "member", "Member"
+
+    class ChatTheme(models.TextChoices):
+        IRIS = "iris", "Iris"
+        OCEAN = "ocean", "Ocean"
+        VIOLET = "violet", "Violet"
+        AMBER = "amber", "Amber"
+        ROSE = "rose", "Rose"
+        MONO = "mono", "Mono"
+
+    class Wallpaper(models.TextChoices):
+        IRIS_GRID = "iris-grid", "Iris Grid"
+        MIDNIGHT = "midnight", "Midnight"
+        AURORA = "aurora", "Aurora"
+        PAPER = "paper", "Paper"
+        GRAPHITE = "graphite", "Graphite"
+        NONE = "none", "None"
+        CUSTOM = "custom", "Custom"
+
+    class MessageScale(models.TextChoices):
+        SMALL = "small", "Small"
+        NORMAL = "normal", "Normal"
+        LARGE = "large", "Large"
 
     conversation = models.ForeignKey(
         Conversation,
@@ -63,6 +91,20 @@ class ConversationMember(models.Model):
     last_read_at = models.DateTimeField(null=True, blank=True)
     is_archived = models.BooleanField(default=False)
     is_muted = models.BooleanField(default=False)
+
+    # Per-user, per-chat appearance. It never changes how the other member sees the chat.
+    chat_theme = models.CharField(max_length=16, choices=ChatTheme.choices, default=ChatTheme.IRIS)
+    wallpaper = models.CharField(max_length=24, choices=Wallpaper.choices, default=Wallpaper.IRIS_GRID)
+    wallpaper_asset = models.ForeignKey(
+        "media.MediaAsset",
+        on_delete=models.SET_NULL,
+        related_name="conversation_wallpaper_links",
+        null=True,
+        blank=True,
+    )
+    wallpaper_dim = models.PositiveSmallIntegerField(default=10)
+    wallpaper_blur = models.BooleanField(default=False)
+    message_scale = models.CharField(max_length=12, choices=MessageScale.choices, default=MessageScale.NORMAL)
 
     class Meta:
         constraints = [
@@ -140,7 +182,10 @@ class MessageReaction(models.Model):
 
     class Meta:
         constraints = [
-            models.UniqueConstraint(fields=["message", "user"], name="messenger_one_reaction_per_user"),
+            models.UniqueConstraint(
+                fields=["message", "user", "emoji"],
+                name="messenger_unique_message_user_emoji",
+            ),
         ]
         indexes = [models.Index(fields=["message", "emoji"], name="messenger_reaction_msg_idx")]
 

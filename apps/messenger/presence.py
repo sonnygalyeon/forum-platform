@@ -11,13 +11,16 @@ def _key(user_id):
 
 
 def set_online(user):
+    """Return True when this is the first live connection for the user."""
     key = _key(user.public_id)
-    if not cache.add(key, 1, timeout=PRESENCE_TTL):
-        try:
-            cache.incr(key)
-            cache.touch(key, PRESENCE_TTL)
-        except Exception:
-            cache.set(key, 1, timeout=PRESENCE_TTL)
+    if cache.add(key, 1, timeout=PRESENCE_TTL):
+        return True
+    try:
+        cache.incr(key)
+        cache.touch(key, PRESENCE_TTL)
+    except Exception:
+        cache.set(key, 1, timeout=PRESENCE_TTL)
+    return False
 
 
 def heartbeat(user):
@@ -28,17 +31,26 @@ def heartbeat(user):
 
 
 def set_offline(user):
+    """Return True only when the user's final websocket connection closes."""
     key = _key(user.public_id)
+    became_offline = False
     try:
         value = cache.decr(key)
         if value <= 0:
             cache.delete(key)
+            became_offline = True
+        else:
+            cache.touch(key, PRESENCE_TTL)
     except Exception:
         cache.delete(key)
-    MessengerPresence.objects.update_or_create(
-        user=user,
-        defaults={"last_seen_at": timezone.now()},
-    )
+        became_offline = True
+
+    if became_offline:
+        MessengerPresence.objects.update_or_create(
+            user=user,
+            defaults={"last_seen_at": timezone.now()},
+        )
+    return became_offline
 
 
 def is_online(user):

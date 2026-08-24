@@ -107,3 +107,28 @@ MESSENGER_MEMBER_ROLE_CHOICES = [
     ("admin", "Admin"),
     ("member", "Member"),
 ]
+
+MESSENGER_CHAT_THEME_CHOICES = [
+    ("iris", "Iris"),
+    ("ocean", "Ocean"),
+    ("violet", "Violet"),
+    ("amber", "Amber"),
+    ("rose", "Rose"),
+    ("mono", "Mono"),
+]
+
+MESSENGER_WALLPAPER_CHOICES = [
+    ("iris-grid", "Iris Grid"),
+    ("midnight", "Midnight"),
+    ("aurora", "Aurora"),
+    ("paper", "Paper"),
+    ("graphite", "Graphite"),
+    ("none", "None"),
+    ("custom", "Custom"),
+]
+
+MESSENGER_MESSAGE_SCALE_CHOICES = [
+    ("small", "Small"),
+    ("normal", "Normal"),
+    ("large", "Large"),
+]

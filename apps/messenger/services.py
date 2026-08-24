@@ -192,10 +192,10 @@ def set_reaction(*, message, user, emoji):
     emoji = emoji.strip()
     if not emoji or len(emoji) > 32:
         raise ValueError("Invalid reaction.")
-    edge, _ = MessageReaction.objects.update_or_create(
+    edge, _ = MessageReaction.objects.get_or_create(
         message=message,
         user=user,
-        defaults={"emoji": emoji},
+        emoji=emoji,
     )
     broadcast_conversation(message.conversation, {
         "type": "message.reaction",
@@ -205,9 +205,12 @@ def set_reaction(*, message, user, emoji):
     return edge
 
 
-def clear_reaction(*, message, user):
+def clear_reaction(*, message, user, emoji=None):
     ensure_member(conversation=message.conversation, user=user)
-    MessageReaction.objects.filter(message=message, user=user).delete()
+    qs = MessageReaction.objects.filter(message=message, user=user)
+    if emoji:
+        qs = qs.filter(emoji=emoji.strip())
+    qs.delete()
     broadcast_conversation(message.conversation, {
         "type": "message.reaction",
         "conversation_id": str(message.conversation.public_id),
@@ -238,15 +241,68 @@ def mark_read(*, conversation, user, message=None):
 
 
 @transaction.atomic
-def update_conversation_settings(*, conversation, user, is_muted=None, is_archived=None, title=None):
+def update_conversation_settings(
+    *,
+    conversation,
+    user,
+    is_muted=None,
+    is_archived=None,
+    title=None,
+    chat_theme=None,
+    wallpaper=None,
+    wallpaper_asset_id=None,
+    wallpaper_dim=None,
+    wallpaper_blur=None,
+    message_scale=None,
+):
     membership = ConversationMember.objects.select_for_update().get(conversation=conversation, user=user)
     fields = []
     if is_muted is not None:
-        membership.is_muted = bool(is_muted); fields.append("is_muted")
+        membership.is_muted = bool(is_muted)
+        fields.append("is_muted")
     if is_archived is not None:
-        membership.is_archived = bool(is_archived); fields.append("is_archived")
+        membership.is_archived = bool(is_archived)
+        fields.append("is_archived")
+    if chat_theme is not None:
+        if chat_theme not in ConversationMember.ChatTheme.values:
+            raise ValueError("Unknown chat theme.")
+        membership.chat_theme = chat_theme
+        fields.append("chat_theme")
+    if wallpaper is not None:
+        if wallpaper not in ConversationMember.Wallpaper.values:
+            raise ValueError("Unknown wallpaper.")
+        membership.wallpaper = wallpaper
+        fields.append("wallpaper")
+    if wallpaper_dim is not None:
+        membership.wallpaper_dim = min(max(int(wallpaper_dim), 0), 70)
+        fields.append("wallpaper_dim")
+    if wallpaper_blur is not None:
+        membership.wallpaper_blur = bool(wallpaper_blur)
+        fields.append("wallpaper_blur")
+    if message_scale is not None:
+        if message_scale not in ConversationMember.MessageScale.values:
+            raise ValueError("Unknown message scale.")
+        membership.message_scale = message_scale
+        fields.append("message_scale")
+    if wallpaper_asset_id is not None:
+        if wallpaper_asset_id == "":
+            membership.wallpaper_asset = None
+            fields.append("wallpaper_asset")
+        else:
+            asset = MediaAsset.objects.filter(public_id=wallpaper_asset_id).first()
+            if asset is None:
+                raise ValueError("Wallpaper asset not found.")
+            if asset.owner_id != user.pk:
+                raise PermissionError("Wallpaper must belong to the current user.")
+            if asset.status != MediaAsset.Status.READY:
+                raise ValueError("Wallpaper asset is not ready.")
+            if asset.kind != MediaAsset.Kind.IMAGE:
+                raise ValueError("Wallpaper must be an image.")
+            membership.wallpaper_asset = asset
+            membership.wallpaper = ConversationMember.Wallpaper.CUSTOM
+            fields.extend(["wallpaper_asset", "wallpaper"])
     if fields:
-        membership.save(update_fields=fields)
+        membership.save(update_fields=list(dict.fromkeys(fields)))
     if title is not None:
         if conversation.kind != Conversation.Kind.GROUP:
             raise ValueError("Only group chats have editable titles.")
@@ -257,8 +313,32 @@ def update_conversation_settings(*, conversation, user, is_muted=None, is_archiv
             raise ValueError("Group title is required.")
         conversation.title = value[:120]
         conversation.save(update_fields=["title", "updated_at"])
-        broadcast_conversation(conversation, {"type": "conversation.updated", "conversation_id": str(conversation.public_id)})
+    broadcast_conversation(conversation, {
+        "type": "conversation.updated",
+        "conversation_id": str(conversation.public_id),
+        "user_id": str(user.public_id),
+    })
     return membership
+
+
+@transaction.atomic
+def pin_message(*, conversation, actor, message=None):
+    membership = ensure_member(conversation=conversation, user=actor)
+    if conversation.kind == Conversation.Kind.GROUP and membership.role not in {
+        ConversationMember.Role.OWNER,
+        ConversationMember.Role.ADMIN,
+    }:
+        raise PermissionError("Only group admins can pin messages.")
+    if message is not None and message.conversation_id != conversation.pk:
+        raise ValueError("Pinned message belongs to another conversation.")
+    conversation.pinned_message = message
+    conversation.save(update_fields=["pinned_message", "updated_at"])
+    broadcast_conversation(conversation, {
+        "type": "conversation.pinned",
+        "conversation_id": str(conversation.public_id),
+        "message_id": str(message.public_id) if message else None,
+    })
+    return conversation
 
 
 @transaction.atomic

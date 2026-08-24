@@ -20,6 +20,7 @@ from apps.messenger.api.serializers import (
     MessageUpdateSerializer,
     ReactionSerializer,
     ReadSerializer,
+    PinnedMessageSerializer,
     WSTicketSerializer,
 )
 from apps.messenger.models import Conversation, Message
@@ -36,6 +37,7 @@ from apps.messenger.services import (
     remove_group_member,
     set_reaction,
     update_conversation_settings,
+    pin_message,
 )
 from apps.social.models import UserBlock
 from apps.users.api.serializers import UserPublicSerializer
@@ -143,6 +145,9 @@ class ConversationMessagesView(APIView):
         except ValueError:
             limit = 50
         qs = messages_for_conversation(conversation)
+        query = request.query_params.get("q", "").strip()
+        if query:
+            qs = qs.filter(text__icontains=query, deleted_at__isnull=True)
         before = request.query_params.get("before")
         if before:
             try:
@@ -245,16 +250,47 @@ class MessageReactionView(APIView):
             return _error(exc)
         return Response({"emoji": edge.emoji})
 
-    @extend_schema(responses={204: None})
+    @extend_schema(request=ReactionSerializer, responses={204: None})
     def delete(self, request, message_id):
         message = self._get(request, message_id)
         if not message:
             return Response({"detail": "Message not found."}, status=404)
+        payload = request.data if request.data else {"emoji": request.query_params.get("emoji", "")}
+        serializer = ReactionSerializer(data=payload)
+        serializer.is_valid(raise_exception=True)
         try:
-            clear_reaction(message=message, user=request.user)
+            clear_reaction(
+                message=message,
+                user=request.user,
+                emoji=serializer.validated_data["emoji"],
+            )
         except (ValueError, PermissionError) as exc:
             return _error(exc)
         return Response(status=204)
+
+
+class ConversationPinnedMessageView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(request=PinnedMessageSerializer, responses=ConversationSerializer)
+    def put(self, request, conversation_id):
+        conversation = conversation_for_user(request.user, conversation_id)
+        if not conversation:
+            return Response({"detail": "Conversation not found."}, status=404)
+        serializer = PinnedMessageSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        message = None
+        message_id = serializer.validated_data.get("message_id")
+        if message_id:
+            message = Message.objects.filter(public_id=message_id, conversation=conversation).first()
+            if not message:
+                return Response({"detail": "Message not found."}, status=400)
+        try:
+            pin_message(conversation=conversation, actor=request.user, message=message)
+        except (ValueError, PermissionError) as exc:
+            return _error(exc)
+        conversation = conversation_for_user(request.user, conversation_id)
+        return Response(ConversationSerializer(conversation, context={"request": request}).data)
 
 
 class ConversationReadView(APIView):

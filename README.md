@@ -1,6 +1,6 @@
-# Night Iris Forum 0.8.6 — Search & Discovery
+# Night Iris Forum 0.8.9 — Messenger Polish
 
-Current full project: Django API + Next.js frontend + custom administration + complete user UX. Stage 8.5 adds reputation, levels, achievements, safe avatar frames, profile accent presets, pinned badges, and followers/following screens. See `STAGE_8_5_SOCIAL_IDENTITY.md` for the exact rules and verification commands.
+Current full project: Django API + Next.js frontend + custom administration + social identity + search/discovery + production foundation + realtime messenger. Stage 8.9 fixes reactions, improves presence/activity states, adds per-chat themes and wallpapers, pinned messages, in-chat search, drafts, archived/unread chat filters, and a redesigned Telegram-inspired messenger layout. See `STAGE_8_9_MESSENGER_POLISH.md` and `MESSENGER_PROTOCOL.md`.
 
 ---
 

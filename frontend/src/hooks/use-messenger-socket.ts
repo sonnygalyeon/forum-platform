@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { clientApi } from "@/lib/client-api";
-import type { MessengerSocketEvent } from "@/lib/types";
+import type { MessengerActivityState, MessengerSocketEvent } from "@/lib/types";
 
 function websocketBase() {
   if (typeof window === "undefined") return "";
@@ -40,7 +40,11 @@ export function useMessengerSocket(onEvent: (event: MessengerSocketEvent) => voi
           }, 30000);
         };
         socket.onmessage = event => {
-          try { callbackRef.current(JSON.parse(event.data)); } catch { /* ignore malformed realtime payload */ }
+          try {
+            callbackRef.current(JSON.parse(event.data));
+          } catch {
+            // Ignore malformed realtime payloads; persistent state remains in PostgreSQL.
+          }
         };
         socket.onclose = () => {
           setConnected(false);
@@ -54,6 +58,7 @@ export function useMessengerSocket(onEvent: (event: MessengerSocketEvent) => voi
         if (!cancelled) timerRef.current = setTimeout(connect, 3000);
       }
     };
+
     connect();
     return () => {
       cancelled = true;
@@ -63,11 +68,15 @@ export function useMessengerSocket(onEvent: (event: MessengerSocketEvent) => voi
     };
   }, [enabled]);
 
-  const sendTyping = useCallback((conversationId: string, active: boolean) => {
+  const sendActivity = useCallback((conversationId: string, state: MessengerActivityState) => {
     if (socketRef.current?.readyState === WebSocket.OPEN) {
-      socketRef.current.send(JSON.stringify({ type: active ? "typing.start" : "typing.stop", conversation_id: conversationId }));
+      socketRef.current.send(JSON.stringify({ type: "activity", conversation_id: conversationId, state }));
     }
   }, []);
 
-  return { connected, sendTyping };
+  const sendTyping = useCallback((conversationId: string, active: boolean) => {
+    sendActivity(conversationId, active ? "typing" : "none");
+  }, [sendActivity]);
+
+  return { connected, sendActivity, sendTyping };
 }
