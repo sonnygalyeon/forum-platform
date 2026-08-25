@@ -6,9 +6,11 @@ type UploadProgress = { completedParts: number; totalParts: number; percent: num
 export async function uploadMediaFile(
   file: File,
   onProgress?: (progress: UploadProgress) => void,
+  signal?: AbortSignal,
 ): Promise<MediaAsset> {
   const initiated = await clientApi<MediaAsset>("/uploads/initiate/", {
     method: "POST",
+    signal,
     body: JSON.stringify({
       original_name: file.name,
       content_type: file.type || "application/octet-stream",
@@ -27,7 +29,7 @@ export async function uploadMediaFile(
     );
     const signed = await clientApi<{ parts: Array<{ part_number: number; url: string }> }>(
       `/uploads/${initiated.id}/parts/sign/`,
-      { method: "POST", body: JSON.stringify({ part_numbers: partNumbers }) },
+      { method: "POST", signal, body: JSON.stringify({ part_numbers: partNumbers }) },
     );
     for (const part of signed.parts) signedUrls.set(part.part_number, part.url);
   }
@@ -47,6 +49,7 @@ export async function uploadMediaFile(
       const response = await fetch(url, {
         method: "PUT",
         body: file.slice(start, end),
+        signal,
       });
       if (!response.ok) throw new Error(`Не удалось загрузить часть ${partNumber}.`);
       const etag = response.headers.get("etag") ?? response.headers.get("ETag");
@@ -66,6 +69,7 @@ export async function uploadMediaFile(
     completed.sort((a, b) => a.part_number - b.part_number);
     return await clientApi<MediaAsset>(`/uploads/${initiated.id}/complete/`, {
       method: "POST",
+      signal,
       body: JSON.stringify({ parts: completed }),
     });
   } catch (error) {

@@ -253,18 +253,25 @@ export type MessengerAppearance = {
 export type MessengerPinnedMessage = { id: string; sender_nickname: string; text: string; deleted: boolean };
 export type MessengerMessage = {
   id: string; conversation_id: string; sender: User; client_id: string; text: string;
-  reply_to: MessengerReplyPreview | null; attachments: MediaAsset[]; reactions: MessengerReaction[]; read_by_count: number;
-  deleted: boolean; pinned: boolean; created_at: string; edited_at: string | null; deleted_at: string | null;
+  reply_to: MessengerReplyPreview | null;
+  forwarded_from: { id: string; sender_nickname: string } | null;
+  attachments: MediaAsset[]; reactions: MessengerReaction[]; read_by_count: number;
+  delivery_state: "sent" | "delivered" | "read" | null;
+  edit_count: number; deleted: boolean; pinned: boolean; created_at: string; edited_at: string | null; deleted_at: string | null;
 };
 export type MessengerConversation = {
-  id: string; kind: "direct" | "group"; title: string; display_title: string; members: MessengerMember[];
+  id: string; kind: "direct" | "group"; title: string; description: string; display_title: string; avatar: MediaAsset | null; members: MessengerMember[];
   last_message: { id:string; sender_id:string; sender_nickname:string; text:string; created_at:string; deleted:boolean } | null;
-  unread_count: number; is_muted: boolean; is_archived: boolean; appearance: MessengerAppearance | null;
-  pinned_message: MessengerPinnedMessage | null; created_at: string; updated_at: string; last_message_at: string | null;
+  unread_count: number; is_muted: boolean; is_archived: boolean; is_pinned: boolean;
+  draft: { text: string; updated_at: string | null } | null; appearance: MessengerAppearance | null;
+  pinned_message: MessengerPinnedMessage | null; created_at: string; updated_at: string; last_message_at: string | null; event_sequence: number;
 };
 export type MessengerMessagesPage = { next_before: string | null; results: MessengerMessage[] };
 export type MessengerSocketEvent = {
   type: string;
+  event_id?: number;
+  sequence?: number;
+  latest_event_id?: number;
   conversation_id?: string;
   message_id?: string | null;
   user_id?: string;
@@ -273,3 +280,22 @@ export type MessengerSocketEvent = {
   state?: MessengerActivityState;
   sender_id?: string;
 };
+
+export type MessengerSettings = {
+  browser_notifications: boolean;
+  notification_sound: boolean;
+  notification_preview: boolean;
+  who_can_message: "everyone" | "following" | "nobody";
+  who_can_add_to_groups: "everyone" | "following" | "nobody";
+  who_can_see_presence: "everyone" | "following" | "nobody";
+  updated_at: string;
+};
+export type MessengerEventPage = {
+  next_after: number;
+  results: Array<{ event_id:number; sequence:number; type:string; conversation_id:string|null; payload:MessengerSocketEvent; created_at:string }>;
+};
+export type MessengerSharedContent = {
+  type: "media" | "files" | "links";
+  results: Array<{ message_id:string; created_at:string; asset?:MediaAsset; url?:string }>;
+};
+export type MessengerEditHistory = { previous_text:string; created_at:string };

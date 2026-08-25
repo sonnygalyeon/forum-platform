@@ -15,6 +15,7 @@ import {
   Plus,
   Search,
   Send,
+  SlidersHorizontal,
   Square,
   X,
 } from "lucide-react";
@@ -24,6 +25,7 @@ import { ChatInfoPanel } from "@/components/messenger/chat-info-panel";
 import { ConversationAvatar } from "@/components/messenger/conversation-avatar";
 import { MessageBubble } from "@/components/messenger/message-bubble";
 import { NewChatPanel } from "@/components/messenger/new-chat-panel";
+import { MessengerSettingsPanel } from "@/components/messenger/messenger-settings-panel";
 import { EmptyState } from "@/components/ui/empty-state";
 import { LoadingBlock } from "@/components/ui/loading";
 import { clientApi, errorMessage } from "@/lib/client-api";
@@ -44,6 +46,8 @@ import type {
   MessengerMessage,
   MessengerMessagesPage,
   MessengerSocketEvent,
+  MessengerSettings,
+  MessengerEditHistory,
 } from "@/lib/types";
 import { useMessengerSocket } from "@/hooks/use-messenger-socket";
 import { useAuth } from "@/providers/auth-provider";
@@ -70,6 +74,14 @@ export function MessengerShell({ initialConversationId }: { initialConversationI
   const [recording, setRecording] = useState(false);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
   const [voiceError, setVoiceError] = useState("");
+  const [olderMessages, setOlderMessages] = useState<MessengerMessage[]>([]);
+  const [loadingOlder, setLoadingOlder] = useState(false);
+  const [olderExhausted, setOlderExhausted] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [forwarding, setForwarding] = useState<MessengerMessage | null>(null);
+  const [historyMessage, setHistoryMessage] = useState<MessengerMessage | null>(null);
+  const [uploadFileName, setUploadFileName] = useState("");
+  const [dragActive, setDragActive] = useState(false);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
@@ -78,12 +90,20 @@ export function MessengerShell({ initialConversationId }: { initialConversationI
   const typingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const activityExpiry = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const endRef = useRef<HTMLDivElement | null>(null);
+  const uploadAbortRef = useRef<AbortController | null>(null);
+  const draftTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const conversations = useQuery({
     queryKey: ["messenger-conversations"],
     queryFn: () => clientApi<MessengerConversation[]>("/messenger/conversations/?archived=1"),
     enabled: Boolean(user),
     refetchInterval: 30000,
+  });
+
+  const messengerSettings = useQuery({
+    queryKey: ["messenger-settings"],
+    queryFn: () => clientApi<MessengerSettings>("/messenger/settings/"),
+    enabled: Boolean(user),
   });
 
   const availableConversations = useMemo(() => {
@@ -105,6 +125,18 @@ export function MessengerShell({ initialConversationId }: { initialConversationI
     queryKey: ["messenger-messages", selectedId],
     queryFn: () => clientApi<MessengerMessagesPage>(`/messenger/conversations/${selectedId}/messages/?limit=100`),
     enabled: Boolean(user && selectedId),
+  });
+
+  const draftQuery = useQuery({
+    queryKey: ["messenger-draft", selectedId],
+    queryFn: () => clientApi<{ text: string; updated_at: string | null }>(`/messenger/conversations/${selectedId}/draft/`),
+    enabled: Boolean(user && selectedId),
+  });
+
+  const historyQuery = useQuery({
+    queryKey: ["messenger-history", historyMessage?.id],
+    queryFn: () => clientApi<MessengerEditHistory[]>(`/messenger/messages/${historyMessage?.id}/history/`),
+    enabled: Boolean(user && historyMessage),
   });
 
   const searchResults = useQuery({
@@ -140,6 +172,16 @@ export function MessengerShell({ initialConversationId }: { initialConversationI
       return;
     }
 
+    if (event.type === "message.created" && event.sender_id && event.sender_id !== user?.id) {
+      const settings = messengerSettings.data;
+      const conversation = conversations.data?.find(item => item.id === event.conversation_id);
+      if (!conversation?.is_muted && settings?.notification_sound) playMessengerTone();
+      if (!conversation?.is_muted && settings?.browser_notifications && typeof document !== "undefined" && document.hidden && typeof Notification !== "undefined" && Notification.permission === "granted") {
+        const title = settings.notification_preview && conversation ? conversation.display_title : "Night Iris Messenger";
+        new Notification(title, { body: settings.notification_preview ? "Новое сообщение" : "У вас новое сообщение", tag: `night-iris-${event.conversation_id}` });
+      }
+    }
+
     if (
       event.type === "presence" ||
       event.type.startsWith("message.") ||
@@ -154,7 +196,7 @@ export function MessengerShell({ initialConversationId }: { initialConversationI
     }
   };
 
-  const { connected, sendActivity, sendTyping } = useMessengerSocket(handleEvent, Boolean(user));
+  const { connected, syncing, sendActivity, sendTyping } = useMessengerSocket(handleEvent, Boolean(user), user?.id ?? "anonymous");
 
   useEffect(() => {
     if (!selectedId || typeof window === "undefined") return;
@@ -164,7 +206,36 @@ export function MessengerShell({ initialConversationId }: { initialConversationI
     setInfoOpen(false);
     setChatSearchOpen(false);
     setChatSearch("");
+    setOlderMessages([]);
+    setOlderExhausted(false);
+    setForwarding(null);
+    setHistoryMessage(null);
   }, [selectedId]);
+
+  useEffect(() => {
+    if (!selectedId || !draftQuery.data) return;
+    setText(draftQuery.data.text);
+    if (typeof window !== "undefined") {
+      const key = `night-iris:draft:${selectedId}`;
+      if (draftQuery.data.text) window.localStorage.setItem(key, draftQuery.data.text);
+      else window.localStorage.removeItem(key);
+    }
+  }, [draftQuery.data, selectedId]);
+
+  const allMessages = useMemo(() => {
+    const current = messages.data?.results ?? [];
+    const seen = new Set<string>();
+    return [...olderMessages, ...current].filter(message => {
+      if (seen.has(message.id)) return false;
+      seen.add(message.id);
+      return true;
+    });
+  }, [olderMessages, messages.data?.results]);
+
+  const saveDraftMutation = useMutation({
+    mutationFn: ({ conversationId, value }: { conversationId:string; value:string }) => clientApi(`/messenger/conversations/${conversationId}/draft/`, { method:"PUT", body:JSON.stringify({text:value}) }),
+    onSuccess: (_data, vars) => qc.invalidateQueries({queryKey:["messenger-draft", vars.conversationId]}),
+  });
 
   const send = useMutation({
     mutationFn: () => clientApi<MessengerMessage>(`/messenger/conversations/${selectedId}/messages/`, {
@@ -178,6 +249,7 @@ export function MessengerShell({ initialConversationId }: { initialConversationI
     }),
     onSuccess: () => {
       if (selectedId && typeof window !== "undefined") window.localStorage.removeItem(`night-iris:draft:${selectedId}`);
+      if (selectedId) saveDraftMutation.mutate({conversationId:selectedId,value:""});
       setText("");
       setReply(null);
       setAttachments([]);
@@ -211,6 +283,23 @@ export function MessengerShell({ initialConversationId }: { initialConversationI
     onSettled: () => {
       qc.invalidateQueries({ queryKey: ["messenger-messages", selectedId] });
       qc.invalidateQueries({ queryKey: ["messenger-conversations"] });
+    },
+  });
+
+  const removeForMe = useMutation({
+    mutationFn: (message: MessengerMessage) => clientApi(`/messenger/messages/${message.id}/?scope=me`, { method:"DELETE" }),
+    onSettled: () => {
+      qc.invalidateQueries({queryKey:["messenger-messages", selectedId]});
+      qc.invalidateQueries({queryKey:["messenger-conversations"]});
+    },
+  });
+
+  const forward = useMutation({
+    mutationFn: ({ message, conversationId }: { message:MessengerMessage; conversationId:string }) => clientApi(`/messenger/messages/${message.id}/forward/`, { method:"POST", body:JSON.stringify({conversation_id:conversationId,client_id:crypto.randomUUID()}) }),
+    onSuccess: (_data, vars) => {
+      setForwarding(null);
+      qc.invalidateQueries({queryKey:["messenger-messages", vars.conversationId]});
+      qc.invalidateQueries({queryKey:["messenger-conversations"]});
     },
   });
 
@@ -277,6 +366,8 @@ export function MessengerShell({ initialConversationId }: { initialConversationI
 
   useEffect(() => () => {
     if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
+    if (draftTimerRef.current) clearTimeout(draftTimerRef.current);
+    uploadAbortRef.current?.abort();
     const recorder = mediaRecorderRef.current;
     if (recorder && recorder.state !== "inactive") recorder.stop();
     mediaStreamRef.current?.getTracks().forEach(track => track.stop());
@@ -291,23 +382,44 @@ export function MessengerShell({ initialConversationId }: { initialConversationI
     setText(value);
     if (!selectedId) return;
     if (typeof window !== "undefined") window.localStorage.setItem(`night-iris:draft:${selectedId}`, value);
+    if (draftTimerRef.current) clearTimeout(draftTimerRef.current);
+    draftTimerRef.current = setTimeout(() => saveDraftMutation.mutate({conversationId:selectedId,value}), 650);
     sendTyping(selectedId, Boolean(value.trim()));
     if (typingTimer.current) clearTimeout(typingTimer.current);
     typingTimer.current = setTimeout(() => sendTyping(selectedId, false), 1400);
   };
 
   const upload = async (file: File) => {
-    if (!selectedId) return;
+    if (!selectedId || uploading !== null) return;
     const state = activityStateForFile(file);
+    const controller = new AbortController();
+    uploadAbortRef.current = controller;
     setUploading(0);
+    setUploadFileName(file.name);
     sendActivity(selectedId, state);
     try {
-      const asset = await uploadMediaFile(file, progress => setUploading(progress.percent));
+      const asset = await uploadMediaFile(file, progress => setUploading(progress.percent), controller.signal);
       setAttachments(current => [...current, asset]);
+    } catch (error) {
+      if (!(error instanceof DOMException && error.name === "AbortError")) setVoiceError("Не удалось загрузить файл.");
     } finally {
+      uploadAbortRef.current = null;
       setUploading(null);
+      setUploadFileName("");
       sendActivity(selectedId, "none");
     }
+  };
+
+  const loadOlder = async () => {
+    if (!selectedId || loadingOlder || olderExhausted) return;
+    const cursor = allMessages[0]?.id;
+    if (!cursor || (!olderMessages.length && !messages.data?.next_before)) return;
+    setLoadingOlder(true);
+    try {
+      const page = await clientApi<MessengerMessagesPage>(`/messenger/conversations/${selectedId}/messages/?limit=60&before=${cursor}`);
+      setOlderMessages(current => [...page.results, ...current]);
+      if (!page.next_before) setOlderExhausted(true);
+    } finally { setLoadingOlder(false); }
   };
 
   const startVoiceRecording = async () => {
@@ -332,15 +444,22 @@ export function MessengerShell({ initialConversationId }: { initialConversationI
         audioChunksRef.current = [];
         if (!blob.size || !selectedId) return;
         sendActivity(selectedId, "uploading_file");
+        const controller = new AbortController();
+        uploadAbortRef.current = controller;
         setUploading(0);
         try {
           const file = new File([blob], `voice-${Date.now()}.${extension}`, { type: mime });
-          const asset = await uploadMediaFile(file, progress => setUploading(progress.percent));
+          setUploadFileName(file.name);
+          const asset = await uploadMediaFile(file, progress => setUploading(progress.percent), controller.signal);
           setAttachments(current => [...current, asset]);
-        } catch {
-          setVoiceError("Не удалось загрузить голосовое сообщение.");
+        } catch (error) {
+          if (!(error instanceof DOMException && error.name === "AbortError")) {
+            setVoiceError("Не удалось загрузить голосовое сообщение.");
+          }
         } finally {
+          uploadAbortRef.current = null;
           setUploading(null);
+          setUploadFileName("");
           sendActivity(selectedId, "none");
         }
       };
@@ -382,7 +501,7 @@ export function MessengerShell({ initialConversationId }: { initialConversationI
         <aside className={`messenger-sidebar ${initialConversationId ? "mobile-chat-open" : ""}`}>
           <div className="messenger-title">
             <div><div className="eyebrow">NIGHT IRIS</div><h1>Messenger</h1></div>
-            <button className="primary-icon-button" onClick={() => setNewChat(true)} title="Новый чат"><Plus size={18}/></button>
+            <div className="messenger-title-actions"><button className="icon-button messenger-flat-button" onClick={() => setSettingsOpen(true)} title="Настройки Messenger"><SlidersHorizontal size={17}/></button><button className="primary-icon-button" onClick={() => setNewChat(true)} title="Новый чат"><Plus size={18}/></button></div>
           </div>
 
           <div className="messenger-search-box">
@@ -397,7 +516,7 @@ export function MessengerShell({ initialConversationId }: { initialConversationI
             <button className={listTab === "archive" ? "active" : ""} onClick={() => setListTab("archive")}><Archive size={12}/> Архив</button>
           </div>
 
-          <div className="messenger-connection"><span className={connected ? "online" : ""}/>{connected ? "синхронизация в реальном времени" : "переподключение…"}</div>
+          <div className="messenger-connection"><span className={connected ? "online" : ""}/>{connected ? (syncing ? "восстанавливаем пропущенные события…" : "синхронизация в реальном времени") : "переподключение…"}</div>
 
           {newChat ? (
             <NewChatPanel
@@ -421,12 +540,15 @@ export function MessengerShell({ initialConversationId }: { initialConversationI
                       <small className={activity ? "conversation-activity" : ""}>
                         {activity
                           ? activityLabel(activity.state, conversation.kind === "group" ? activity.nickname : undefined)
-                          : conversation.last_message
-                            ? `${conversation.last_message.sender_id === user.id ? "Вы: " : ""}${conversation.last_message.text}`
-                            : "Чат создан"}
+                          : conversation.draft?.text
+                            ? `Черновик: ${conversation.draft.text}`
+                            : conversation.last_message
+                              ? `${conversation.last_message.sender_id === user.id ? "Вы: " : ""}${conversation.last_message.text}`
+                              : "Чат создан"}
                       </small>
                     </span>
                     <span className="conversation-meta">
+                      {conversation.is_pinned ? <Pin size={10} className="conversation-pin-icon"/> : null}
                       <time>{conversation.last_message_at ? formatConversationTime(conversation.last_message_at) : ""}</time>
                       {conversation.unread_count ? <b>{conversation.unread_count > 99 ? "99+" : conversation.unread_count}</b> : null}
                     </span>
@@ -483,14 +605,20 @@ export function MessengerShell({ initialConversationId }: { initialConversationI
               ) : null}
 
               <div
-                className={`message-stage ${wallpaperClass(selected.appearance)} ${messageScaleClass(selected.appearance)} ${selected.appearance?.wallpaper_blur ? "messenger-wallpaper-blur" : ""}`}
+                className={`message-stage ${dragActive ? "drag-active" : ""} ${wallpaperClass(selected.appearance)} ${messageScaleClass(selected.appearance)} ${selected.appearance?.wallpaper_blur ? "messenger-wallpaper-blur" : ""}`}
                 style={chatStageStyle(selected.appearance)}
+                onDragEnter={event => { event.preventDefault(); setDragActive(true); }}
+                onDragOver={event => { event.preventDefault(); setDragActive(true); }}
+                onDragLeave={event => { if (event.currentTarget === event.target) setDragActive(false); }}
+                onDrop={event => { event.preventDefault(); setDragActive(false); const file=event.dataTransfer.files?.[0]; if(file) void upload(file); }}
               >
                 <div className="message-wallpaper"/>
                 <div className="message-wallpaper-dim"/>
                 <div className="message-scroll">
-                  {messages.isLoading ? <LoadingBlock/> : messages.data?.results.map((message, index) => {
-                    const previous = messages.data!.results[index - 1];
+                  {dragActive ? <div className="messenger-drop-overlay">Перетащите файл сюда</div> : null}
+                  {messages.data?.next_before || olderMessages.length ? <button className="messenger-load-older" disabled={loadingOlder || olderExhausted} onClick={() => void loadOlder()}>{olderExhausted ? "Начало переписки" : loadingOlder ? "Загружаем…" : "Загрузить более ранние сообщения"}</button> : null}
+                  {messages.isLoading ? <LoadingBlock/> : allMessages.map((message, index) => {
+                    const previous = allMessages[index - 1];
                     const grouped = Boolean(
                       previous &&
                       previous.sender.id === message.sender.id &&
@@ -511,9 +639,14 @@ export function MessengerShell({ initialConversationId }: { initialConversationI
                             const value = window.prompt("Изменить сообщение", current.text);
                             if (value !== null) edit.mutate({ message: current, nextText: value });
                           }}
-                          onDelete={current => {
+                          onDeleteForAll={current => {
                             if (window.confirm("Удалить сообщение для всех участников?")) remove.mutate(current);
                           }}
+                          onDeleteForMe={current => {
+                            if (window.confirm("Скрыть это сообщение только у вас?")) removeForMe.mutate(current);
+                          }}
+                          onForward={setForwarding}
+                          onHistory={setHistoryMessage}
                           onToggleReaction={(current, emoji, active) => reaction.mutate({ message: current, emoji, active })}
                           onPin={current => pin.mutate(current)}
                         />
@@ -541,10 +674,12 @@ export function MessengerShell({ initialConversationId }: { initialConversationI
                   </div>
                 ) : null}
 
+                {uploading !== null ? <div className="messenger-upload-progress"><span><strong>{uploadFileName || "Файл"}</strong><small>{uploading}%</small></span><div><i style={{width:`${uploading}%`}}/></div><button title="Отменить загрузку" onClick={()=>uploadAbortRef.current?.abort()}><X size={13}/></button></div> : null}
+
                 <div className="composer-shell">
                   <div className="composer-tools">
                     <label className="composer-attach" title="Прикрепить файл">
-                      <Paperclip size={19}/>{uploading !== null ? <b>{uploading}%</b> : null}
+                      <Paperclip size={19}/>
                       <input type="file" onChange={event => { const file = event.target.files?.[0]; if (file) void upload(file); event.currentTarget.value = ""; }}/>
                     </label>
                     <button type="button" className={`composer-voice ${recording ? "recording" : ""}`} title={recording ? "Остановить запись" : "Голосовое сообщение"} onClick={() => recording ? stopVoiceRecording() : void startVoiceRecording()}>
@@ -555,6 +690,10 @@ export function MessengerShell({ initialConversationId }: { initialConversationI
                     rows={1}
                     value={text}
                     onChange={event => onType(event.target.value)}
+                    onPaste={event => {
+                      const file = event.clipboardData.files.item(0);
+                      if (file) { event.preventDefault(); void upload(file); }
+                    }}
                     onKeyDown={event => {
                       if (event.key === "Enter" && !event.shiftKey) {
                         event.preventDefault();
@@ -566,7 +705,7 @@ export function MessengerShell({ initialConversationId }: { initialConversationI
                   />
                   <button className="composer-send" disabled={(!text.trim() && !attachments.length) || send.isPending} onClick={() => send.mutate()}><Send size={18}/></button>
                 </div>
-                <div className="composer-hint"><span>{connected ? "● realtime" : "○ reconnecting"}</span><span>Enter — отправить · Shift+Enter — новая строка</span></div>
+                <div className="composer-hint"><span>{connected ? (syncing ? "◌ resync" : "● realtime") : "○ reconnecting"}</span><span>Enter — отправить · Shift+Enter — новая строка</span></div>
                 {voiceError ? <div className="composer-error">{voiceError}</div> : null}
                 {send.error ? <div className="composer-error">{errorMessage(send.error)}</div> : null}
               </footer>
@@ -582,9 +721,33 @@ export function MessengerShell({ initialConversationId }: { initialConversationI
         </main>
 
         {infoOpen && selected ? <ChatInfoPanel conversation={selected} me={user} onClose={() => setInfoOpen(false)}/> : null}
+        {settingsOpen ? <MessengerSettingsPanel onClose={() => setSettingsOpen(false)}/> : null}
+        {forwarding ? <div className="messenger-action-overlay" onClick={()=>setForwarding(null)}><div className="messenger-action-panel" onClick={event=>event.stopPropagation()}><header><div><span className="eyebrow">FORWARD</span><strong>Переслать сообщение</strong></div><button onClick={()=>setForwarding(null)}><X size={16}/></button></header><div className="messenger-action-list">{(conversations.data??[]).filter(item=>!item.is_archived).map(item=><button key={item.id} disabled={forward.isPending} onClick={()=>forward.mutate({message:forwarding,conversationId:item.id})}><ConversationAvatar conversation={item} me={user} size="sm"/><span><strong>{item.display_title}</strong><small>{item.id===selectedId?"Текущий чат":"Переслать сюда"}</small></span></button>)}</div>{forward.error?<div className="composer-error">{errorMessage(forward.error)}</div>:null}</div></div> : null}
+        {historyMessage ? <div className="messenger-action-overlay" onClick={()=>setHistoryMessage(null)}><div className="messenger-action-panel history" onClick={event=>event.stopPropagation()}><header><div><span className="eyebrow">EDIT HISTORY</span><strong>История изменений</strong></div><button onClick={()=>setHistoryMessage(null)}><X size={16}/></button></header><div className="messenger-history-current"><small>Сейчас</small><p>{historyMessage.text}</p></div><div className="messenger-history-list">{historyQuery.isLoading?<span>Загрузка…</span>:historyQuery.data?.map((row,index)=><article key={`${row.created_at}-${index}`}><time>{new Date(row.created_at).toLocaleString("ru-RU")}</time><p>{row.previous_text || "(пустое сообщение)"}</p></article>)}</div></div></div> : null}
       </section>
     </AppShell>
   );
+}
+
+function playMessengerTone() {
+  if (typeof window === "undefined" || typeof AudioContext === "undefined") return;
+  try {
+    const context = new AudioContext();
+    const oscillator = context.createOscillator();
+    const gain = context.createGain();
+    oscillator.type = "sine";
+    oscillator.frequency.setValueAtTime(740, context.currentTime);
+    gain.gain.setValueAtTime(0.0001, context.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.055, context.currentTime + 0.012);
+    gain.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + 0.12);
+    oscillator.connect(gain);
+    gain.connect(context.destination);
+    oscillator.start();
+    oscillator.stop(context.currentTime + 0.13);
+    oscillator.addEventListener("ended", () => { void context.close(); }, { once: true });
+  } catch {
+    // Browsers may block audio until the page has received a user gesture.
+  }
 }
 
 function sameDay(left: string, right: string) {

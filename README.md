@@ -1,6 +1,6 @@
-# Night Iris Forum 0.8.9 — Messenger Polish
+# Night Iris Forum 0.8.10 — Messenger Core v2 & Notifications
 
-Current full project: Django API + Next.js frontend + custom administration + social identity + search/discovery + production foundation + realtime messenger. Stage 8.9 fixes reactions, improves presence/activity states, adds per-chat themes and wallpapers, pinned messages, in-chat search, drafts, archived/unread chat filters, and a redesigned Telegram-inspired messenger layout. See `STAGE_8_9_MESSENGER_POLISH.md` and `MESSENGER_PROTOCOL.md`.
+Current full project: Django API + Next.js frontend + custom administration + social identity + search/discovery + production foundation + realtime messenger. Stage 8.10 adds durable messenger event sync, delivery/read receipts, server drafts, forwarding, edit history, per-user deletion, pinned conversations, messenger privacy/settings, shared media/files/links, browser notifications, resilient reconnect/resync and large-history loading. See `STAGE_8_10_MESSENGER_CORE_V2.md` and `MESSENGER_PROTOCOL.md`.
 
 ---
 

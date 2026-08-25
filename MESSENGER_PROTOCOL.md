@@ -1,66 +1,48 @@
-# Night Iris Messenger Protocol — 0.8.9
+# Night Iris Messenger protocol — 0.8.10
 
-The messenger is API-first. Web, Android and iOS clients share the same persistent REST contract and realtime WebSocket event model.
+The protocol is API-first. Web, Android and iOS use the same REST resources and realtime event vocabulary.
 
-## Persistent REST API
+## REST base
 
-All endpoints are under `/api/v1/messenger/` and use the forum JWT authentication model.
+`/api/v1/messenger/`
 
-- `GET conversations/`
-- `POST conversations/direct/` `{ "user_id": "uuid" }`
-- `POST conversations/groups/` `{ "title": "...", "member_ids": ["uuid"] }`
-- `GET/PATCH conversations/{conversation_id}/`
-- `GET/POST conversations/{conversation_id}/messages/`
-- `GET conversations/{conversation_id}/messages/?q=text` for in-chat search
-- `POST conversations/{conversation_id}/read/`
-- `PUT conversations/{conversation_id}/pinned/` `{ "message_id": "uuid|null" }`
-- `POST conversations/{conversation_id}/members/`
-- `DELETE conversations/{conversation_id}/members/{user_id}/`
-- `PATCH/DELETE messages/{message_id}/`
-- `PUT messages/{message_id}/reaction/` `{ "emoji": "🔥" }`
-- `DELETE messages/{message_id}/reaction/` `{ "emoji": "🔥" }`
-- `GET unread-count/`
-- `GET users/?q=...`
-- `POST ws-ticket/`
+Core resources:
 
-`PATCH conversations/{conversation_id}/` also accepts private per-member appearance fields:
+- `GET /conversations/`
+- `POST /conversations/direct/`
+- `POST /conversations/groups/`
+- `GET/PATCH /conversations/{conversation_id}/`
+- `GET/POST /conversations/{conversation_id}/messages/`
+- `GET/PUT /conversations/{conversation_id}/draft/`
+- `POST /conversations/{conversation_id}/read/`
+- `PUT /conversations/{conversation_id}/pinned/`
+- `GET /conversations/{conversation_id}/shared/?type=media|files|links`
+- `POST/DELETE /conversations/{conversation_id}/members/...`
+- `PATCH /conversations/{conversation_id}/members/{user_id}/role/`
+- `PATCH/DELETE /messages/{message_id}/`
+- `GET /messages/{message_id}/history/`
+- `POST /messages/{message_id}/forward/`
+- `PUT/DELETE /messages/{message_id}/reaction/`
+- `GET /events/?after={event_id}`
+- `GET/PATCH /settings/`
+- `GET /unread-count/`
+- `POST /ws-ticket/`
 
-- `chat_theme`;
-- `wallpaper`;
-- `wallpaper_asset_id`;
-- `wallpaper_dim`;
-- `wallpaper_blur`;
-- `message_scale`;
-- plus existing `is_muted`, `is_archived` and group `title`.
+Message history is cursor-based:
 
-Message creation accepts a client-generated UUID in `client_id`; retries with the same conversation/sender/client_id return the existing message instead of duplicating it.
+`GET /conversations/{id}/messages/?limit=60&before={message_id}`
 
-## Attachments
+## WebSocket
 
-Clients upload image/video/file data through the existing `/api/v1/uploads/*` multipart flow. Once an asset becomes `ready`, its UUID can be included in `attachment_ids` when sending a message. Custom chat wallpapers use the same media pipeline and must be image assets owned by the current user.
+`/ws/messenger/?ticket=<short-lived-ticket>`
 
-## Reactions
-
-Reaction identity is `(message, user, emoji)`. A user can therefore react with multiple distinct emoji while every individual emoji remains idempotent. Removing a reaction deletes only the requested emoji edge.
-
-## Realtime connection
-
-Web clients obtain a one-time short-lived ticket from `POST ws-ticket/` and connect to:
-
-`/ws/messenger/?ticket=<ticket>`
-
-Mobile clients can use the same ticket flow after authenticating with JWT. Do not persist a WebSocket ticket; request a new one for each connection/reconnect.
-
-### Client -> server
+The client sends ephemeral activity only:
 
 ```json
-{"type":"ping"}
-{"type":"activity","conversation_id":"uuid","state":"typing"}
-{"type":"activity","conversation_id":"uuid","state":"uploading_file"}
-{"type":"activity","conversation_id":"uuid","state":"none"}
+{"type":"activity","conversation_id":"...","state":"typing"}
 ```
 
-Supported activity states:
+Supported states:
 
 - `typing`
 - `uploading_file`
@@ -70,31 +52,72 @@ Supported activity states:
 - `choosing_sticker`
 - `none`
 
-For backwards compatibility the server still accepts `typing.start` and `typing.stop`.
+Durable server events include:
 
-### Server -> client
+```json
+{
+  "event_id": 1824,
+  "sequence": 311,
+  "type": "message.created",
+  "conversation_id": "...",
+  "message_id": "...",
+  "sender_id": "..."
+}
+```
 
-Event names include:
+`event_id` is globally monotonic for the database. `sequence` is monotonic inside one conversation.
 
-- `messenger.ready`
-- `message.created`
-- `message.updated`
-- `message.deleted`
-- `message.reaction`
-- `conversation.created`
-- `conversation.updated`
-- `conversation.pinned`
-- `conversation.read`
-- `activity`
-- `presence`
-- `pong`
+Ephemeral `presence` and `activity` events are not written to the durable log.
 
-Persistent writes are committed to PostgreSQL before realtime events are emitted. Reconnecting clients recover authoritative state by refetching REST endpoints.
+## Reconnect / gap recovery
 
-## Presence semantics
+Client persists its last durable event ID **per authenticated account**. After a disconnect:
 
-Presence is tracked in Redis with a short TTL and a connection counter. Closing one browser tab does not mark the user offline if another messenger socket is still alive. `MessengerPresence.last_seen_at` is updated after the final live connection closes and is exposed to conversation members.
+1. reconnect WebSocket;
+2. wait for `messenger.ready` and record its `latest_event_id` recovery barrier;
+3. buffer durable WebSocket events that arrive while recovery is running;
+4. call `GET /messenger/events/?after=<last_event_id>` until the gap through the recovery barrier is closed;
+5. apply REST events in ascending `event_id` order and advance the cursor;
+6. replay buffered durable events whose IDs are still newer than the cursor;
+7. continue normal realtime processing.
 
-## Security model
+This ordering prevents a newly arrived WebSocket event from advancing the cursor past older missed events. Duplicate replay is permitted; clients must treat message/conversation invalidation operations as idempotent.
 
-This remains a Telegram-like cloud-chat model, not end-to-end encrypted Secret Chats. Messages are stored server-side in PostgreSQL. Transport encryption is HTTPS/WSS in production. Existing Night Iris user blocks are enforced for direct messaging.
+## Idempotent message send
+
+Every message creation contains a UUID `client_id`.
+
+The server constraint `(conversation, sender, client_id)` prevents duplicate sends when a client retries after a timeout.
+
+## Delivery/read state
+
+A `MessageReceipt` exists for every recipient.
+
+- persisted message => `sent`
+- receipt has `delivered_at` => delivered to that account/device session
+- receipt has `read_at` => read
+
+For a sender, the serialized aggregate is `sent`, `delivered`, or `read`.
+
+## Drafts
+
+Drafts are per `(conversation, user)` and are stored server-side. A client may retain a local fallback while offline and push it after reconnection.
+
+## Deletion
+
+- `DELETE /messages/{id}/?scope=me` hides the message only for the current user.
+- `DELETE /messages/{id}/` is delete-for-everyone and is sender-only.
+
+No physical deletion is used for delete-for-everyone; the tombstone remains.
+
+## Privacy
+
+Messenger settings:
+
+- `who_can_message`
+- `who_can_add_to_groups`
+- `who_can_see_presence`
+
+Values: `everyone`, `following`, `nobody`.
+
+Block rules always override Messenger privacy settings.

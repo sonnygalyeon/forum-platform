@@ -30,6 +30,15 @@ class Conversation(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     last_message_at = models.DateTimeField(null=True, blank=True)
+    event_sequence = models.PositiveBigIntegerField(default=0)
+    description = models.CharField(max_length=500, blank=True)
+    avatar_asset = models.ForeignKey(
+        "media.MediaAsset",
+        on_delete=models.SET_NULL,
+        related_name="conversation_avatar_links",
+        null=True,
+        blank=True,
+    )
 
     class Meta:
         indexes = [
@@ -91,6 +100,10 @@ class ConversationMember(models.Model):
     last_read_at = models.DateTimeField(null=True, blank=True)
     is_archived = models.BooleanField(default=False)
     is_muted = models.BooleanField(default=False)
+    is_pinned = models.BooleanField(default=False)
+    pinned_at = models.DateTimeField(null=True, blank=True)
+    draft_text = models.TextField(blank=True)
+    draft_updated_at = models.DateTimeField(null=True, blank=True)
 
     # Per-user, per-chat appearance. It never changes how the other member sees the chat.
     chat_theme = models.CharField(max_length=16, choices=ChatTheme.choices, default=ChatTheme.IRIS)
@@ -143,6 +156,13 @@ class Message(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     edited_at = models.DateTimeField(null=True, blank=True)
     deleted_at = models.DateTimeField(null=True, blank=True)
+    forwarded_from = models.ForeignKey(
+        "self",
+        on_delete=models.SET_NULL,
+        related_name="forward_copies",
+        null=True,
+        blank=True,
+    )
 
     class Meta:
         constraints = [
@@ -197,4 +217,75 @@ class MessengerPresence(models.Model):
         related_name="messenger_presence",
     )
     last_seen_at = models.DateTimeField(null=True, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+
+class MessageReceipt(models.Model):
+    message = models.ForeignKey(Message, on_delete=models.CASCADE, related_name="receipts")
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="message_receipts")
+    delivered_at = models.DateTimeField(null=True, blank=True)
+    read_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["message", "user"], name="messenger_unique_message_receipt")]
+        indexes = [models.Index(fields=["user", "delivered_at", "read_at"], name="messenger_receipt_user_idx")]
+
+
+class MessageEdit(models.Model):
+    message = models.ForeignKey(Message, on_delete=models.CASCADE, related_name="edit_history")
+    editor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="message_edits")
+    previous_text = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        indexes = [models.Index(fields=["message", "-created_at"], name="messenger_edit_msg_idx")]
+
+
+class MessageHiddenForUser(models.Model):
+    message = models.ForeignKey(Message, on_delete=models.CASCADE, related_name="hidden_edges")
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="hidden_messages")
+    hidden_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["message", "user"], name="messenger_unique_hidden_message")]
+        indexes = [models.Index(fields=["user", "-hidden_at"], name="messenger_hidden_user_idx")]
+
+
+class MessengerEvent(models.Model):
+    public_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    conversation = models.ForeignKey(Conversation, on_delete=models.CASCADE, related_name="event_log", null=True, blank=True)
+    sequence = models.PositiveBigIntegerField(default=0)
+    event_type = models.CharField(max_length=64)
+    payload = models.JSONField(default=dict)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["conversation", "sequence"], name="messenger_event_conv_seq_idx"),
+            models.Index(fields=["-id"], name="messenger_event_latest_idx"),
+        ]
+
+
+class MessengerEventRecipient(models.Model):
+    event = models.ForeignKey(MessengerEvent, on_delete=models.CASCADE, related_name="recipient_edges")
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="messenger_event_edges")
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["event", "user"], name="messenger_unique_event_recipient")]
+        indexes = [models.Index(fields=["user", "event"], name="messenger_event_user_idx")]
+
+
+class MessengerSettings(models.Model):
+    class Privacy(models.TextChoices):
+        EVERYONE = "everyone", "Everyone"
+        FOLLOWING = "following", "Following"
+        NOBODY = "nobody", "Nobody"
+
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="messenger_settings")
+    browser_notifications = models.BooleanField(default=True)
+    notification_sound = models.BooleanField(default=True)
+    notification_preview = models.BooleanField(default=True)
+    who_can_message = models.CharField(max_length=16, choices=Privacy.choices, default=Privacy.EVERYONE)
+    who_can_add_to_groups = models.CharField(max_length=16, choices=Privacy.choices, default=Privacy.EVERYONE)
+    who_can_see_presence = models.CharField(max_length=16, choices=Privacy.choices, default=Privacy.EVERYONE)
     updated_at = models.DateTimeField(auto_now=True)
