@@ -13,6 +13,11 @@ read MEDIA_DOMAIN
 printf "ACME email: "
 read ACME_EMAIL
 
+case "$ACME_EMAIL" in
+  *@*.*) ;;
+  *) echo "ACME email must look like name@example.com" >&2; exit 1 ;;
+esac
+
 python - "$APP_DOMAIN" "$MEDIA_DOMAIN" "$ACME_EMAIL" <<'PY'
 from pathlib import Path
 import secrets
@@ -30,6 +35,7 @@ replacements = {
     'replace-with-a-strong-database-password': secrets.token_urlsafe(36),
     'replace-with-a-long-access-key': secrets.token_hex(16),
     'replace-with-a-long-secret-key': secrets.token_urlsafe(48),
+    'replace-with-a-long-metrics-token': secrets.token_urlsafe(48),
 }
 # Longer/more-specific strings first so media domain is not partially rewritten.
 for old in sorted(replacements, key=len, reverse=True):

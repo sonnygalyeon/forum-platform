@@ -62,10 +62,12 @@ INSTALLED_APPS = [
     "apps.moderation",
     "apps.notifications",
     "apps.adminpanel",
+    "apps.observability",
 ]
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "apps.observability.middleware.RequestObservabilityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "corsheaders.middleware.CorsMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
@@ -216,6 +218,10 @@ CELERY_BEAT_SCHEDULE = {
         "task": "apps.notifications.tasks.recover_pending_notification_events",
         "schedule": 60.0,
     },
+    "observability-celery-heartbeat": {
+        "task": "apps.observability.tasks.celery_heartbeat",
+        "schedule": 30.0,
+    },
 }
 
 CHANNEL_LAYERS = {
@@ -250,7 +256,7 @@ CORS_ALLOW_CREDENTIALS = False
 SPECTACULAR_SETTINGS = {
     "TITLE": "Forum Platform API",
     "DESCRIPTION": "Stable API contract for Forum Platform Web, Android and iOS clients.",
-    "VERSION": "0.8.10",
+    "VERSION": "0.8.11",
     "SERVE_INCLUDE_SCHEMA": False,
     "OAS_VERSION": "3.1.0",
     "COMPONENT_SPLIT_REQUEST": True,
@@ -282,3 +288,53 @@ SPECTACULAR_SETTINGS = {
         "displayRequestDuration": True,
     },
 }
+
+# Stage 8.11 — testing & observability
+LOG_LEVEL = os.environ.get("LOG_LEVEL", "INFO").upper()
+LOG_FORMAT = os.environ.get("LOG_FORMAT", "console" if DEBUG else "json").lower()
+SLOW_QUERY_MS = int(os.environ.get("SLOW_QUERY_MS", "250"))
+METRICS_ENABLED = os.environ.get("METRICS_ENABLED", "1") == "1"
+METRICS_TOKEN = os.environ.get("METRICS_TOKEN", "")
+CELERY_HEARTBEAT_STALE_SECONDS = int(os.environ.get("CELERY_HEARTBEAT_STALE_SECONDS", "90"))
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "filters": {
+        "request_context": {"()": "apps.observability.logging.RequestContextFilter"},
+    },
+    "formatters": {
+        "json": {"()": "apps.observability.logging.JsonFormatter"},
+        "console": {
+            "format": "%(asctime)s %(levelname)s %(name)s [%(request_id)s] %(message)s",
+        },
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "json" if LOG_FORMAT == "json" else "console",
+            "filters": ["request_context"],
+        },
+    },
+    "root": {"handlers": ["console"], "level": LOG_LEVEL},
+    "loggers": {
+        "django.server": {"handlers": ["console"], "level": LOG_LEVEL, "propagate": False},
+        "nightiris": {"handlers": ["console"], "level": LOG_LEVEL, "propagate": False},
+    },
+}
+
+SENTRY_DSN = os.environ.get("SENTRY_DSN", "").strip()
+if SENTRY_DSN:
+    import sentry_sdk
+    from sentry_sdk.integrations.celery import CeleryIntegration
+    from sentry_sdk.integrations.django import DjangoIntegration
+
+    sentry_sdk.init(
+        dsn=SENTRY_DSN,
+        integrations=[DjangoIntegration(), CeleryIntegration()],
+        environment=os.environ.get("SENTRY_ENVIRONMENT", "production" if not DEBUG else "development"),
+        release=os.environ.get("SENTRY_RELEASE", "night-iris@0.8.11"),
+        traces_sample_rate=float(os.environ.get("SENTRY_TRACES_SAMPLE_RATE", "0.05")),
+        send_default_pii=False,
+    )
+

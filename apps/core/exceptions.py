@@ -1,3 +1,4 @@
+from django.http import Http404
 from rest_framework.exceptions import ErrorDetail, Throttled, ValidationError
 from rest_framework.views import exception_handler as drf_exception_handler
 
@@ -24,13 +25,16 @@ def api_exception_handler(exc, context):
         message = "Request validation failed."
         fields = _to_plain(original_data)
     else:
-        try:
-            code = exc.get_codes()
-        except AttributeError:
-            code = getattr(exc, "default_code", "api_error")
+        if isinstance(exc, Http404):
+            code = "not_found"
+        else:
+            try:
+                code = exc.get_codes()
+            except AttributeError:
+                code = getattr(exc, "default_code", "api_error")
 
-        if isinstance(code, (dict, list)):
-            code = getattr(exc, "default_code", "api_error")
+            if isinstance(code, (dict, list)):
+                code = getattr(exc, "default_code", "api_error")
 
         if isinstance(original_data, dict) and "detail" in original_data:
             message = str(original_data["detail"])
@@ -39,11 +43,15 @@ def api_exception_handler(exc, context):
 
         fields = None
 
+    request = context.get("request")
+    request_id = getattr(request, "_observability_request_id", "") if request is not None else ""
+
     payload = {
         "error": {
             "code": str(code),
             "message": message,
             "status": response.status_code,
+            "request_id": request_id,
         }
     }
 

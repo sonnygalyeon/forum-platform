@@ -1,6 +1,6 @@
 [project]
 name = "forum-platform"
-version = "0.8.10"
+version = "0.8.11"
 description = "API-first forum platform built with Django REST Framework"
 requires-python = ">=3.13,<3.14"
 dependencies = [
@@ -18,7 +18,29 @@ dependencies = [
     "channels>=4.2,<5",
     "channels-redis>=4.2,<5",
     "daphne>=4.2,<5",
+    "prometheus-client>=0.22,<1",
+    "sentry-sdk[django]>=2.35,<3",
 ]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.4,<9",
+    "pytest-django>=4.11,<5",
+    "pytest-cov>=6.2,<7",
+    "pytest-asyncio>=1.1,<2",
+]
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "config.settings_test"
+testpaths = ["tests", "apps"]
+python_files = ["test_*.py", "tests.py"]
+addopts = "-ra --strict-markers"
+markers = [
+    "integration: tests crossing multiple Night Iris subsystems",
+    "websocket: Channels/WebSocket behavior",
+    "query_budget: database query-count regression guard",
+]
+
 
 [tool.uv]
 package = false

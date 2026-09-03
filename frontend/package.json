@@ -1,12 +1,16 @@
 {
   "name": "night-iris-forum-web",
-  "version": "0.8.10",
+  "version": "0.8.11",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:install": "playwright install chromium",
+    "test:smoke": "playwright test e2e/smoke.spec.ts"
   },
   "dependencies": {
     "@tanstack/react-query": "5.101.4",
@@ -24,6 +28,7 @@
     "eslint-config-next": "16.3.1",
     "postcss": "^8.5.23",
     "tailwindcss": "4.3.3",
-    "typescript": "^5.8.0"
+    "typescript": "^5.8.0",
+    "@playwright/test": "^1.55.0"
   }
 }

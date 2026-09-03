@@ -42,7 +42,7 @@ def validate_comment_content(content):
 
         else:
             raise ValidationError(
-                f"Unsupported comment block type: {block_type}"
+                f"Unsupported comment block type: {block_type}"]
             )
 
     if total_length > MAX_COMMENT_TEXT_LENGTH:

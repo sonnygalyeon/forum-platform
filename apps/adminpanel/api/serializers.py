@@ -50,8 +50,6 @@ class AdminPublicationSerializer(serializers.ModelSerializer):
     excerpt = serializers.SerializerMethodField()
     report_count = serializers.IntegerField(read_only=True, default=0)
     comment_count = serializers.IntegerField(read_only=True, default=0)
-    reputation = serializers.SerializerMethodField()
-    level = serializers.SerializerMethodField()
 
     class Meta:
         model = Publication

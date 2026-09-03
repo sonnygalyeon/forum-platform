@@ -1,4 +1,4 @@
-# Night Iris Forum 0.8.10 — Messenger Core v2 & Notifications
+# Night Iris Forum 0.8.11 — Testing & Observability
 
 Current full project: Django API + Next.js frontend + custom administration + social identity + search/discovery + production foundation + realtime messenger. Stage 8.10 adds durable messenger event sync, delivery/read receipts, server drafts, forwarding, edit history, per-user deletion, pinned conversations, messenger privacy/settings, shared media/files/links, browser notifications, resilient reconnect/resync and large-history loading. See `STAGE_8_10_MESSENGER_CORE_V2.md` and `MESSENGER_PROTOCOL.md`.
 
@@ -417,3 +417,16 @@ cp .env.prod.example .env.prod
 ## Messenger
 
 Stage 8.8 adds realtime direct/group messaging. Open `http://localhost:3000/messages` after login. Persistent data uses REST/PostgreSQL; realtime uses Django Channels + Redis.
+
+## Stage 8.11
+
+Testing and operational telemetry were added without changing the database schema. See `docs/TESTING.md`, `docs/OBSERVABILITY.md` and `STAGE_8_11_TESTING_OBSERVABILITY.md`.
+
+Quick checks:
+
+```bash
+make test
+make observability
+python3 scripts/load_smoke.py
+```
+

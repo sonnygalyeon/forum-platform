@@ -6,6 +6,7 @@ from apps.messenger.models import ConversationMember, MessengerEventRecipient
 from apps.messenger.presence import heartbeat, set_offline, set_online
 from apps.messenger.services import can_view_presence, mark_delivered
 from apps.users.models import User
+from apps.observability.metrics import WEBSOCKET_CONNECTIONS
 
 
 @database_sync_to_async
@@ -88,6 +89,8 @@ class MessengerConsumer(AsyncJsonWebsocketConsumer):
 
         first_connection = await _presence_online(self.user)
         await self.accept()
+        WEBSOCKET_CONNECTIONS.inc()
+        self._metrics_connected = True
         await _mark_all_delivered(self.user)
 
         if first_connection:
@@ -112,6 +115,9 @@ class MessengerConsumer(AsyncJsonWebsocketConsumer):
         })
 
     async def disconnect(self, code):
+        if getattr(self, "_metrics_connected", False):
+            WEBSOCKET_CONNECTIONS.dec()
+            self._metrics_connected = False
         if getattr(self, "user", None) and self.user.is_authenticated:
             became_offline = await _presence_offline(self.user)
             if became_offline:

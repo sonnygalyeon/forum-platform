@@ -10,7 +10,7 @@ WORKDIR /app
 RUN pip install --no-cache-dir uv
 
 COPY pyproject.toml ./
-RUN uv sync --no-dev --no-install-project
+RUN uv sync --group dev --no-install-project
 
 COPY . .
 

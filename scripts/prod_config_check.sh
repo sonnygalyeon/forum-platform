@@ -22,4 +22,18 @@ if grep -Eq '^DJANGO_DEBUG=1$' "$ENV_FILE"; then
   exit 1
 fi
 
+ACME_EMAIL=$(grep -E '^ACME_EMAIL=' "$ENV_FILE" | tail -1 | cut -d= -f2-)
+case "$ACME_EMAIL" in
+  *@*.*) ;;
+  *) echo "ERROR: ACME_EMAIL is not a valid-looking email address." >&2; exit 1 ;;
+esac
+
+if grep -Eq '^METRICS_ENABLED=1$' "$ENV_FILE"; then
+  METRICS_TOKEN=$(grep -E '^METRICS_TOKEN=' "$ENV_FILE" | tail -1 | cut -d= -f2-)
+  if [ -z "$METRICS_TOKEN" ]; then
+    echo "ERROR: METRICS_TOKEN must be set when metrics are enabled in production." >&2
+    exit 1
+  fi
+fi
+
 echo "Production environment sanity check: OK"

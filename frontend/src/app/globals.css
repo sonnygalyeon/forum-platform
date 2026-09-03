@@ -522,3 +522,5 @@
   .messenger-shared-grid.media{grid-template-columns:repeat(4,1fr)}
   .messenger-global-unread.compact{min-width:14px;height:14px;font-size:7px}
 }
+
+.admin-observability-failure{margin-top:12px}.admin-observability-failure p{overflow-wrap:anywhere}

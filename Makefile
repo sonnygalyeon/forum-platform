@@ -1,4 +1,4 @@
-.PHONY: up down build bootstrap check migrations migrate storage logs worker-logs beat-logs api-validate smoke schema prod-init prod-config prod-up prod-down prod-logs prod-backup prod-smoke
+.PHONY: up down build bootstrap check migrations migrate storage logs worker-logs beat-logs api-validate smoke schema test test-all e2e load-smoke observability prod-init prod-config prod-up prod-down prod-logs prod-backup prod-smoke
 
 up:
 	docker compose up -d
@@ -41,6 +41,21 @@ schema:
 
 smoke:
 	sh scripts/smoke_api.sh
+
+test:
+	./scripts/test_backend.sh
+
+test-all:
+	./scripts/test_all.sh
+
+e2e:
+	./scripts/run_e2e.sh
+
+load-smoke:
+	python3 scripts/load_smoke.py
+
+observability:
+	docker compose run --rm api python manage.py observability_report
 
 prod-config:
 	./scripts/prod_config_check.sh

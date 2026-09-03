@@ -4,6 +4,7 @@ from django.db import transaction
 from django.db.models import F
 
 from apps.messenger.models import Conversation, MessengerEvent, MessengerEventRecipient
+from apps.observability.metrics import MESSENGER_EVENTS
 
 
 def user_group(user_id):
@@ -47,6 +48,7 @@ def _persist_event(*, event, conversation=None, user_ids=None):
     )
     payload["event_id"] = row.id
     payload["sequence"] = sequence
+    MESSENGER_EVENTS.labels(type=row.event_type).inc()
     return payload
 
 

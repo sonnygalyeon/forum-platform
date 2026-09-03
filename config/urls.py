@@ -24,6 +24,7 @@ urlpatterns = [
     path("api/v1/", include("apps.moderation.api.urls")),
     path("api/v1/", include("apps.notifications.api.urls")),
     path("api/v1/", include("apps.adminpanel.api.urls")),
+    path("api/v1/", include("apps.observability.urls")),
 ]
 
 if settings.API_DOCS_ENABLED:

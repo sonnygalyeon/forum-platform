@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { clearAuthCookies, currentTokens, djangoFetch, refreshAccess, setAuthCookies } from "@/lib/server-auth";
 
-const ALLOWED_ROOTS = new Set(["publications", "feed", "communities", "notifications", "users", "comments", "admin", "moderation", "ready", "uploads", "identity", "search", "discover", "messenger"]);
+const ALLOWED_ROOTS = new Set(["publications", "feed", "communities", "notifications", "users", "comments", "admin", "moderation", "ready", "uploads", "identity", "search", "discover", "messenger", "observability"]);
 
 type Context = { params: Promise<{ path: string[] }> };
 
@@ -15,6 +15,8 @@ async function proxy(request: Request, context: Context) {
   const djangoPath = `${path.join("/")}/${incomingUrl.search}`;
   const body = ["GET", "HEAD"].includes(request.method) ? undefined : await request.arrayBuffer();
   const headers = new Headers();
+  const requestId = request.headers.get("x-request-id") || crypto.randomUUID();
+  headers.set("X-Request-ID", requestId);
   const contentType = request.headers.get("content-type");
   if (contentType) headers.set("Content-Type", contentType);
 
@@ -37,6 +39,7 @@ async function proxy(request: Request, context: Context) {
     status: upstream.status,
     headers: {
       "Content-Type": upstream.headers.get("content-type") ?? "application/json",
+      "X-Request-ID": upstream.headers.get("x-request-id") ?? requestId,
     },
   });
 
