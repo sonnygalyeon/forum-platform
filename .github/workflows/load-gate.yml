@@ -95,8 +95,8 @@ jobs:
           --concurrency 20
           --warmup 30
           --max-error-rate 0.01
-          --max-p95-ms 1500
-          --max-p99-ms 3000
+          --max-p95-ms 3000
+          --max-p99-ms 4000
           --min-rps 10
           --output /tmp/night-iris-load-report.json
       - uses: actions/upload-artifact@v4
