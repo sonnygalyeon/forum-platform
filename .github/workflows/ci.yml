@@ -13,6 +13,28 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: ./scripts/security_audit_repo.sh
+      - run: ./scripts/version_check.py
+
+  dependency-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.13"
+          enable-cache: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Audit Python production dependencies
+        run: |
+          uv export --frozen --no-dev --no-hashes --format requirements-txt > /tmp/night-iris-requirements.txt
+          uvx pip-audit --strict -r /tmp/night-iris-requirements.txt
+      - name: Audit frontend production dependencies
+        working-directory: frontend
+        run: npm audit --omit=dev --audit-level=high
 
   backend:
     runs-on: ubuntu-latest
@@ -65,9 +87,23 @@ jobs:
         with:
           python-version: "3.13"
       - run: uv sync --frozen --group dev
+      - run: ./scripts/version_check.py
       - run: uv run python manage.py check
       - run: uv run python manage.py makemigrations --check --dry-run
-      - run: uv run python manage.py spectacular --file /tmp/forum-openapi.yml --validate --fail-on-warn
+      - name: Generate current OpenAPI contract
+        run: uv run python manage.py spectacular --file /tmp/forum-openapi.yml --validate --fail-on-warn
+      - name: Verify backwards compatibility with 0.9 beta public API
+        run: |
+          BASE_SHA=0003228145934f837d38f3610db730bec69a5c18
+          git fetch --no-tags --depth=1 origin "$BASE_SHA"
+          git worktree add --detach /tmp/night-iris-api-beta "$BASE_SHA"
+          (
+            cd /tmp/night-iris-api-beta
+            "$GITHUB_WORKSPACE/.venv/bin/python" manage.py spectacular \
+              --file /tmp/forum-openapi-beta.yml --validate --fail-on-warn
+          )
+          uv run python scripts/check_openapi_compat.py \
+            /tmp/forum-openapi-beta.yml /tmp/forum-openapi.yml
       - run: uv run pytest --cov=apps --cov=config --cov-report=term-missing --cov-fail-under=25
 
   frontend:
