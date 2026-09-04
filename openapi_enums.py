@@ -108,6 +108,11 @@ MESSENGER_MEMBER_ROLE_CHOICES = [
     ("member", "Member"),
 ]
 
+COMMUNITY_STAFF_ROLE_CHOICES = [
+    ("moderator", "Moderator"),
+    ("editor", "Editor"),
+]
+
 MESSENGER_CHAT_THEME_CHOICES = [
     ("iris", "Iris"),
     ("ocean", "Ocean"),

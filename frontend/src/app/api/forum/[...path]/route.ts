@@ -1,4 +1,3 @@
-
 import { NextResponse } from "next/server";
 import {
   BackendUnavailableError,
@@ -19,6 +18,7 @@ const ALLOWED_ROOTS = new Set([
   "notifications",
   "users",
   "comments",
+  "reports",
   "admin",
   "moderation",
   "ready",
@@ -34,10 +34,7 @@ type Context = {
   params: Promise<{ path: string[] }>;
 };
 
-async function proxy(
-  request: Request,
-  context: Context,
-) {
+async function proxy(request: Request, context: Context) {
   const requestId = requestIdFor(request);
   const { path } = await context.params;
 

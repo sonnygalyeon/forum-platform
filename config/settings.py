@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 
 from openapi_enums import (
     COMMENT_KIND_CHOICES,
+    COMMUNITY_STAFF_ROLE_CHOICES,
     IDENTITY_ACCENT_CHOICES,
     IDENTITY_BADGE_RULE_CHOICES,
     IDENTITY_FRAME_UNLOCK_CHOICES,
@@ -83,7 +84,7 @@ ROOT_URLCONF = "config.urls"
 
 TEMPLATES = [
     {
-        "BACKEND": "django.template.backends.django.DjangoTemplates",
+        "BACKEND": "django.db.backends.django.DjangoTemplates",
         "DIRS": [],
         "APP_DIRS": True,
         "OPTIONS": {
@@ -205,7 +206,6 @@ S3_CONFIGURE_BUCKET_CORS = os.environ.get("S3_CONFIGURE_BUCKET_CORS", "0") == "1
 MEDIA_REQUIRE_SCAN = os.environ.get("MEDIA_REQUIRE_SCAN", "0") == "1"
 DATA_UPLOAD_MAX_MEMORY_SIZE = 2 * 1024 * 1024
 
-
 REDIS_CACHE_URL = os.environ.get("REDIS_CACHE_URL", "redis://redis:6379/1")
 CHANNEL_REDIS_URL = os.environ.get("CHANNEL_REDIS_URL", "redis://redis:6379/2")
 CELERY_BROKER_URL = os.environ.get("CELERY_BROKER_URL", "redis://redis:6379/0")
@@ -239,7 +239,6 @@ CACHES = {
     }
 }
 
-
 API_DOCS_ENABLED = os.environ.get("API_DOCS_ENABLED", "1") == "1"
 READINESS_CHECK_S3 = os.environ.get("READINESS_CHECK_S3", "1") == "1"
 
@@ -255,9 +254,9 @@ CORS_URLS_REGEX = r"^/api/.*$"
 CORS_ALLOW_CREDENTIALS = False
 
 SPECTACULAR_SETTINGS = {
-    "TITLE": "Forum Platform API",
-    "DESCRIPTION": "Stable API contract for Forum Platform Web, Android and iOS clients.",
-    "VERSION": "0.8.11",
+    "TITLE": "Night Iris API",
+    "DESCRIPTION": "Stable API contract for Night Iris Web, Android and iOS clients.",
+    "VERSION": "0.9.0-beta.1",
     "SERVE_INCLUDE_SCHEMA": False,
     "OAS_VERSION": "3.1.0",
     "COMPONENT_SPLIT_REQUEST": True,
@@ -280,6 +279,7 @@ SPECTACULAR_SETTINGS = {
         "IdentityBadgeRuleEnum": IDENTITY_BADGE_RULE_CHOICES,
         "MessengerConversationKindEnum": MESSENGER_CONVERSATION_KIND_CHOICES,
         "MessengerMemberRoleEnum": MESSENGER_MEMBER_ROLE_CHOICES,
+        "CommunityStaffRoleEnum": COMMUNITY_STAFF_ROLE_CHOICES,
         "MessengerChatThemeEnum": MESSENGER_CHAT_THEME_CHOICES,
         "MessengerWallpaperEnum": MESSENGER_WALLPAPER_CHOICES,
         "MessengerMessageScaleEnum": MESSENGER_MESSAGE_SCALE_CHOICES,
@@ -335,7 +335,7 @@ if SENTRY_DSN:
         dsn=SENTRY_DSN,
         integrations=[DjangoIntegration(), CeleryIntegration()],
         environment=os.environ.get("SENTRY_ENVIRONMENT", "production" if not DEBUG else "development"),
-        release=os.environ.get("SENTRY_RELEASE", "night-iris@0.8.11"),
+        release=os.environ.get("SENTRY_RELEASE", "night-iris@0.9.0-beta.1"),
         traces_sample_rate=float(os.environ.get("SENTRY_TRACES_SAMPLE_RATE", "0.05")),
         send_default_pii=False,
     )
