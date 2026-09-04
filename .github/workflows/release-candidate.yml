@@ -13,9 +13,19 @@ jobs:
     runs-on: ubuntu-latest
     env:
       APP_IMAGE_TAG: rc-${{ github.sha }}
+      BUILD_SHA: ${{ github.sha }}
 
     steps:
       - uses: actions/checkout@v4
+
+      - name: Resolve release metadata
+        id: release
+        run: |
+          VERSION="$(cat VERSION)"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "APP_VERSION=$VERSION" >> "$GITHUB_ENV"
+          echo "SENTRY_RELEASE=night-iris@$VERSION" >> "$GITHUB_ENV"
+          ./scripts/version_check.py
 
       - name: Validate shell entrypoints
         run: |
@@ -52,11 +62,27 @@ jobs:
           docker compose --env-file .env.prod -f compose.prod.yaml
           build api frontend
 
-      - name: Generate immutable release manifest
-        run: ./scripts/release_manifest.sh /tmp/night-iris-release-manifest.txt
+      - name: Build immutable release bundle
+        run: |
+          OUT=/tmp/night-iris-release
+          mkdir -p "$OUT"
+          ./scripts/release_manifest.sh "$OUT/release-manifest.txt"
+          ARCHIVE="$OUT/night-iris-${APP_VERSION}.zip"
+          git archive \
+            --format=zip \
+            --prefix="night-iris-${APP_VERSION}/" \
+            --output="$ARCHIVE" \
+            HEAD
+          sha256sum "$ARCHIVE" > "$ARCHIVE.sha256"
+          {
+            echo "source_archive=$(basename "$ARCHIVE")"
+            echo "source_archive_sha256=$(sha256sum "$ARCHIVE" | awk '{print $1}')"
+          } >> "$OUT/release-manifest.txt"
+          cat "$OUT/release-manifest.txt"
 
       - uses: actions/upload-artifact@v4
         with:
-          name: night-iris-${{ github.sha }}-release-manifest
-          path: /tmp/night-iris-release-manifest.txt
+          name: night-iris-${{ steps.release.outputs.version }}-${{ github.sha }}
+          path: /tmp/night-iris-release/
           if-no-files-found: error
+          retention-days: 30
