@@ -132,3 +132,9 @@ MESSENGER_MESSAGE_SCALE_CHOICES = [
     ("normal", "Normal"),
     ("large", "Large"),
 ]
+
+MESSENGER_PRIVACY_CHOICES = [
+    ("everyone", "Everyone"),
+    ("following", "Following"),
+    ("nobody", "Nobody"),
+]
