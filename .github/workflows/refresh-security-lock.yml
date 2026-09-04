@@ -1,0 +1,34 @@
+name: Refresh security lock
+
+on:
+  push:
+    branches: [ver1.0-ga]
+
+permissions:
+  contents: write
+
+jobs:
+  refresh-python-lock:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ver1.0-ga
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.13"
+          enable-cache: false
+      - name: Refresh sqlparse security floor
+        run: uv lock --upgrade-package sqlparse
+      - name: Commit refreshed lock
+        run: |
+          if git diff --quiet -- uv.lock; then
+            echo "uv.lock already satisfies the security floor."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add uv.lock
+          git commit -m "deps: refresh sqlparse security lock"
+          git push origin HEAD:ver1.0-ga
