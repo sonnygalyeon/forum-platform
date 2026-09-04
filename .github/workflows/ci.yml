@@ -185,3 +185,12 @@ jobs:
       - uses: actions/checkout@v4
       - run: cp .env.prod.example .env.prod
       - run: docker compose --env-file .env.prod -f compose.prod.yaml config >/dev/null
+      - name: Validate Caddy production configuration
+        run: >-
+          docker run --rm
+          -e APP_DOMAIN=forum.example.com
+          -e MEDIA_DOMAIN=media.forum.example.com
+          -e ACME_EMAIL=admin@example.com
+          -v "$PWD/deploy/caddy/Caddyfile:/etc/caddy/Caddyfile:ro"
+          caddy:2-alpine
+          caddy validate --config /etc/caddy/Caddyfile
