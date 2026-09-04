@@ -1,7 +1,7 @@
 from django.db.models import BooleanField, Count, Exists, OuterRef, Q, Value
 
 from apps.publications.models import Publication
-from apps.social.models import UserBlock, UserMute
+from apps.social.models import PublicationBookmark, UserBlock, UserMute
 
 
 def publication_queryset(viewer=None, *, hide_muted=False):
@@ -28,16 +28,10 @@ def publication_queryset(viewer=None, *, hide_muted=False):
     if viewer is not None and viewer.is_authenticated:
         queryset = queryset.annotate(
             is_author_blocked=Exists(
-                UserBlock.objects.filter(
-                    blocker=viewer,
-                    blocked_id=OuterRef("author_id"),
-                )
+                UserBlock.objects.filter(blocker=viewer, blocked_id=OuterRef("author_id"))
             ),
             is_author_muted=Exists(
-                UserMute.objects.filter(
-                    muter=viewer,
-                    muted_id=OuterRef("author_id"),
-                )
+                UserMute.objects.filter(muter=viewer, muted_id=OuterRef("author_id"))
             ),
             interaction_blocked=Exists(
                 UserBlock.objects.filter(
@@ -45,18 +39,20 @@ def publication_queryset(viewer=None, *, hide_muted=False):
                     | Q(blocked=viewer, blocker_id=OuterRef("author_id"))
                 )
             ),
+            is_bookmarked=Exists(
+                PublicationBookmark.objects.filter(user=viewer, publication_id=OuterRef("pk"))
+            ),
         )
         if hide_muted:
             queryset = queryset.exclude(
-                author_id__in=UserMute.objects.filter(
-                    muter=viewer,
-                ).values("muted_id")
+                author_id__in=UserMute.objects.filter(muter=viewer).values("muted_id")
             )
     else:
         queryset = queryset.annotate(
             is_author_blocked=Value(False, output_field=BooleanField()),
             is_author_muted=Value(False, output_field=BooleanField()),
             interaction_blocked=Value(False, output_field=BooleanField()),
+            is_bookmarked=Value(False, output_field=BooleanField()),
         )
 
     return queryset

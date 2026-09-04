@@ -5,23 +5,14 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.social.models import UserBlock, UserFollow, UserMute
-from apps.social.services import (
-    block_user,
-    follow_user,
-    mute_user,
-    unblock_user,
-    unfollow_user,
-    unmute_user,
-)
+from apps.publications.api.serializers import PublicationListSerializer
+from apps.publications.models import Publication
+from apps.publications.selectors import publication_queryset
+from apps.social.models import PublicationBookmark, UserBlock, UserFollow, UserMute
+from apps.social.services import block_user, follow_user, mute_user, unblock_user, unfollow_user, unmute_user
 from apps.users.models import User
 
-from .serializers import (
-    BlockedUserSerializer,
-    FollowerSerializer,
-    FollowingSerializer,
-    MutedUserSerializer,
-)
+from .serializers import BookmarkStateSerializer, BlockedUserSerializer, FollowerSerializer, FollowingSerializer, MutedUserSerializer
 
 
 @extend_schema_view(
@@ -35,18 +26,14 @@ class UserFollowView(APIView):
         return get_object_or_404(User, public_id=user_id, is_active=True)
 
     def put(self, request, user_id):
-        target = self.get_target(user_id)
         try:
-            follow_user(follower=request.user, following=target)
+            follow_user(follower=request.user, following=self.get_target(user_id))
         except ValueError as exc:
             raise serializers.ValidationError({"detail": str(exc)}) from exc
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     def delete(self, request, user_id):
-        unfollow_user(
-            follower=request.user,
-            following=self.get_target(user_id),
-        )
+        unfollow_user(follower=request.user, following=self.get_target(user_id))
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
@@ -99,17 +86,10 @@ class UserFollowersView(generics.ListAPIView):
     serializer_class = FollowerSerializer
 
     def get_queryset(self):
-        user = get_object_or_404(
-            User,
-            public_id=self.kwargs["user_id"],
-            is_active=True,
-        )
-        return (
-            UserFollow.objects
-            .filter(following=user)
-            .select_related("follower", "follower__avatar_asset", "follower__banner_asset", "follower__identity_profile__equipped_frame")
-            .order_by("-created_at")
-        )
+        user = get_object_or_404(User, public_id=self.kwargs["user_id"], is_active=True)
+        return UserFollow.objects.filter(following=user).select_related(
+            "follower", "follower__avatar_asset", "follower__banner_asset", "follower__identity_profile__equipped_frame"
+        ).order_by("-created_at")
 
 
 class UserFollowingView(generics.ListAPIView):
@@ -117,17 +97,10 @@ class UserFollowingView(generics.ListAPIView):
     serializer_class = FollowingSerializer
 
     def get_queryset(self):
-        user = get_object_or_404(
-            User,
-            public_id=self.kwargs["user_id"],
-            is_active=True,
-        )
-        return (
-            UserFollow.objects
-            .filter(follower=user)
-            .select_related("following", "following__avatar_asset", "following__banner_asset", "following__identity_profile__equipped_frame")
-            .order_by("-created_at")
-        )
+        user = get_object_or_404(User, public_id=self.kwargs["user_id"], is_active=True)
+        return UserFollow.objects.filter(follower=user).select_related(
+            "following", "following__avatar_asset", "following__banner_asset", "following__identity_profile__equipped_frame"
+        ).order_by("-created_at")
 
 
 class MyBlockedUsersView(generics.ListAPIView):
@@ -135,12 +108,7 @@ class MyBlockedUsersView(generics.ListAPIView):
     serializer_class = BlockedUserSerializer
 
     def get_queryset(self):
-        return (
-            UserBlock.objects
-            .filter(blocker=self.request.user)
-            .select_related("blocked")
-            .order_by("-created_at")
-        )
+        return UserBlock.objects.filter(blocker=self.request.user).select_related("blocked").order_by("-created_at")
 
 
 class MyMutedUsersView(generics.ListAPIView):
@@ -148,9 +116,38 @@ class MyMutedUsersView(generics.ListAPIView):
     serializer_class = MutedUserSerializer
 
     def get_queryset(self):
-        return (
-            UserMute.objects
-            .filter(muter=self.request.user)
-            .select_related("muted")
-            .order_by("-created_at")
-        )
+        return UserMute.objects.filter(muter=self.request.user).select_related("muted").order_by("-created_at")
+
+
+@extend_schema_view(
+    get=extend_schema(responses=BookmarkStateSerializer, summary="Get publication bookmark state"),
+    put=extend_schema(request=None, responses={204: None}, summary="Bookmark publication"),
+    delete=extend_schema(request=None, responses={204: None}, summary="Remove publication bookmark"),
+)
+class PublicationBookmarkView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get_publication(self, publication_id):
+        return get_object_or_404(Publication, public_id=publication_id, visibility=Publication.Visibility.PUBLISHED)
+
+    def get(self, request, publication_id):
+        publication = self.get_publication(publication_id)
+        return Response({"bookmarked": PublicationBookmark.objects.filter(user=request.user, publication=publication).exists()})
+
+    def put(self, request, publication_id):
+        PublicationBookmark.objects.get_or_create(user=request.user, publication=self.get_publication(publication_id))
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    def delete(self, request, publication_id):
+        PublicationBookmark.objects.filter(user=request.user, publication=self.get_publication(publication_id)).delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class MyBookmarksView(generics.ListAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = PublicationListSerializer
+
+    def get_queryset(self):
+        return publication_queryset(self.request.user).filter(
+            bookmark_edges__user=self.request.user
+        ).order_by("-bookmark_edges__created_at", "-id")

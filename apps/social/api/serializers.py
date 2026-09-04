@@ -38,3 +38,7 @@ class MutedUserSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserMute
         fields = ["user", "muted_at"]
+
+
+class BookmarkStateSerializer(serializers.Serializer):
+    bookmarked = serializers.BooleanField()

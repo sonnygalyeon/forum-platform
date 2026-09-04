@@ -3,7 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { Edit3, History, MessageSquareText } from "lucide-react";
+import { Bookmark, BookmarkCheck, Edit3, History, MessageSquareText } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
 import { ContentBlocks } from "@/components/content/content-blocks";
 import { CommentItem } from "@/components/discussion/comment-item";
@@ -14,18 +14,34 @@ import { clientApi, errorMessage } from "@/lib/client-api";
 import type { Comment, CommentBlock, CursorPage, Publication } from "@/lib/types";
 import { useAuth } from "@/providers/auth-provider";
 
+type BookmarkState = { bookmarked: boolean };
+
 export default function PublicationPage() {
-  const params = useParams<{id:string}>(); const id = params.id;
-  const { user } = useAuth(); const qc = useQueryClient();
+  const params = useParams<{id:string}>();
+  const id = params.id;
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
   const publication = useQuery({ queryKey:["publication",id], queryFn:()=>clientApi<Publication>(`/publications/${id}/`) });
   const comments = useQuery({ queryKey:["comments",id], queryFn:()=>clientApi<CursorPage<Comment>>(`/publications/${id}/comments/`) });
-  const create = useMutation({ mutationFn:(content:CommentBlock[])=>clientApi<Comment>(`/publications/${id}/comments/`,{method:"POST",body:JSON.stringify({content})}), onSuccess:()=>qc.invalidateQueries({queryKey:["comments",id]}) });
+  const bookmark = useQuery({ queryKey:["bookmark",id], queryFn:()=>clientApi<BookmarkState>(`/publications/${id}/bookmark/`), enabled:Boolean(user) });
+  const create = useMutation({ mutationFn:(content:CommentBlock[])=>clientApi<Comment>(`/publications/${id}/comments/`,{method:"POST",body:JSON.stringify({content})}), onSuccess:()=>queryClient.invalidateQueries({queryKey:["comments",id]}) });
+  const toggleBookmark = useMutation({
+    mutationFn: async () => {
+      const bookmarked = bookmark.data?.bookmarked ?? false;
+      await clientApi(`/publications/${id}/bookmark/`, { method: bookmarked ? "DELETE" : "PUT" });
+      return !bookmarked;
+    },
+    onSuccess: (bookmarked) => {
+      queryClient.setQueryData<BookmarkState>(["bookmark",id], { bookmarked });
+      void queryClient.invalidateQueries({ queryKey: ["bookmarks"] });
+    },
+  });
   if (publication.isLoading) return <AppShell><LoadingBlock/></AppShell>;
   if (publication.isError || !publication.data) return <AppShell><div className="error-panel">Публикация не найдена или скрыта.</div></AppShell>;
   const p = publication.data;
   return <AppShell>
     <article className="publication-detail">
-      <div className="publication-author-line"><Link href={`/users/${p.author.id}`} className="author-link"><UserAvatar user={p.author} size="sm"/><span><strong>@{p.author.nickname}</strong><small>{new Date(p.created_at).toLocaleString("ru-RU")}{p.is_edited?` · изменено · rev.${p.revision}`:""}</small></span></Link><div className="publication-tools">{p.can_edit?<Link href={`/publications/${p.id}/edit`} className="secondary-button compact-button"><Edit3 size={14}/> Редактировать</Link>:null}<Link href={`/publications/${p.id}/revisions`} className="icon-button" aria-label="История"><History size={16}/></Link></div></div>
+      <div className="publication-author-line"><Link href={`/users/${p.author.id}`} className="author-link"><UserAvatar user={p.author} size="sm"/><span><strong>@{p.author.nickname}</strong><small>{new Date(p.created_at).toLocaleString("ru-RU")}{p.is_edited?` · изменено · rev.${p.revision}`:""}</small></span></Link><div className="publication-tools">{user?<button type="button" className="secondary-button compact-button" disabled={toggleBookmark.isPending} onClick={()=>toggleBookmark.mutate()}>{bookmark.data?.bookmarked?<BookmarkCheck size={14}/>:<Bookmark size={14}/>} {bookmark.data?.bookmarked?"Сохранено":"Сохранить"}</button>:null}{p.can_edit?<Link href={`/publications/${p.id}/edit`} className="secondary-button compact-button"><Edit3 size={14}/> Редактировать</Link>:null}<Link href={`/publications/${p.id}/revisions`} className="icon-button" aria-label="История"><History size={16}/></Link></div></div>
       <div className="meta-row"><span className="status-chip">{p.type === "topic" ? "Вопрос" : p.type === "article" ? "Статья" : "Пост"}</span>{p.community?<Link href={`/communities/${p.community.id}`}>/{p.community.slug}</Link>:null}</div>
       {p.title?<h1>{p.title}</h1>:null}
       <div className="tags">{p.tags.map(t=><span className="tag" key={t.id}>{t.name}</span>)}</div>
