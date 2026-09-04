@@ -16,7 +16,7 @@ class HealthEndpointTests(TestCase):
         self.assertEqual(response.json(), {"status": "ok"})
 
     @override_settings(READINESS_CHECK_S3=True)
-    @patch("apps.core.views.get_internal_s3_client")
+    @patch("apps.core.views.internal_client")
     @patch.object(cache, "get", return_value="ok")
     @patch.object(cache, "set", return_value=True)
     def test_ready_checks_database_redis_and_storage(self, cache_set, cache_get, get_s3):
