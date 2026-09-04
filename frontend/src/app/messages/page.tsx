@@ -1,2 +1,5 @@
-import { MessengerShell } from "@/components/messenger/messenger-shell";
-export default function MessagesPage(){return <MessengerShell/>}
+import { MessengerExperience } from "@/components/messenger/messenger-experience";
+
+export default function MessagesPage() {
+  return <MessengerExperience/>;
+}
