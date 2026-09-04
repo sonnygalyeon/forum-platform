@@ -31,6 +31,20 @@ if grep -Eq 'example\.com|replace-with|change-me' "$ENV_FILE"; then
   exit 1
 fi
 
+CANONICAL_VERSION="$(cat VERSION)"
+ENV_VERSION="$(value APP_VERSION)"
+if [ "$ENV_VERSION" != "$CANONICAL_VERSION" ]; then
+  echo "ERROR: APP_VERSION=$ENV_VERSION does not match VERSION=$CANONICAL_VERSION." >&2
+  exit 1
+fi
+
+EXPECTED_SENTRY_RELEASE="night-iris@$CANONICAL_VERSION"
+ENV_SENTRY_RELEASE="$(value SENTRY_RELEASE)"
+if [ "$ENV_SENTRY_RELEASE" != "$EXPECTED_SENTRY_RELEASE" ]; then
+  echo "ERROR: SENTRY_RELEASE=$ENV_SENTRY_RELEASE must be $EXPECTED_SENTRY_RELEASE." >&2
+  exit 1
+fi
+
 if ! grep -Eq '^DJANGO_DEBUG=0$' "$ENV_FILE"; then
   echo "ERROR: DJANGO_DEBUG must explicitly be 0 in production." >&2
   exit 1
