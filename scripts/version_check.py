@@ -25,12 +25,19 @@ def main() -> None:
         backend_version = tomllib.load(handle)["project"]["version"]
 
     frontend = json.loads((ROOT / "frontend/package.json").read_text(encoding="utf-8"))
+    frontend_lock = json.loads(
+        (ROOT / "frontend/package-lock.json").read_text(encoding="utf-8")
+    )
     frontend_version = frontend["version"]
+    frontend_lock_version = frontend_lock["version"]
+    frontend_lock_root_version = frontend_lock["packages"][""]["version"]
 
     versions = {
         "VERSION": version,
         "pyproject.toml": backend_version,
         "frontend/package.json": frontend_version,
+        "frontend/package-lock.json": frontend_lock_version,
+        "frontend/package-lock.json root package": frontend_lock_root_version,
     }
     mismatched = {name: value for name, value in versions.items() if value != version}
     if mismatched:
