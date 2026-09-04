@@ -67,15 +67,19 @@ jobs:
           OUT=/tmp/night-iris-release
           mkdir -p "$OUT"
           ./scripts/release_manifest.sh "$OUT/release-manifest.txt"
-          ARCHIVE="$OUT/night-iris-${APP_VERSION}.zip"
+          ARCHIVE_NAME="night-iris-${APP_VERSION}.zip"
+          ARCHIVE="$OUT/$ARCHIVE_NAME"
           git archive \
             --format=zip \
             --prefix="night-iris-${APP_VERSION}/" \
             --output="$ARCHIVE" \
             HEAD
-          sha256sum "$ARCHIVE" > "$ARCHIVE.sha256"
+          (
+            cd "$OUT"
+            sha256sum "$ARCHIVE_NAME" > "$ARCHIVE_NAME.sha256"
+          )
           {
-            echo "source_archive=$(basename "$ARCHIVE")"
+            echo "source_archive=$ARCHIVE_NAME"
             echo "source_archive_sha256=$(sha256sum "$ARCHIVE" | awk '{print $1}')"
           } >> "$OUT/release-manifest.txt"
           cat "$OUT/release-manifest.txt"
