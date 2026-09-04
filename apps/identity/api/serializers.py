@@ -58,12 +58,16 @@ class IdentityProfileSerializer(serializers.ModelSerializer):
 
     @extend_schema_field(OwnedBadgeSerializer(many=True))
     def get_badges(self, obj):
-        edges = (
-            UserBadge.objects
-            .filter(user=obj.user, pinned=True)
-            .select_related("badge")
-            .order_by("pin_order", "awarded_at")[:3]
-        )
+        prefetched = getattr(obj.user, "_pinned_identity_badges", None)
+        if prefetched is not None:
+            edges = prefetched[:3]
+        else:
+            edges = (
+                UserBadge.objects
+                .filter(user=obj.user, pinned=True)
+                .select_related("badge")
+                .order_by("pin_order", "awarded_at")[:3]
+            )
         return OwnedBadgeSerializer(edges, many=True).data
 
 
