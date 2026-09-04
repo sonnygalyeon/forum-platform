@@ -1,13 +1,14 @@
-.PHONY: up down build bootstrap check migrations migrate storage logs worker-logs beat-logs api-validate smoke schema test test-all e2e load-smoke observability prod-init prod-config prod-up prod-down prod-logs prod-backup prod-smoke
+
+.PHONY: up down build bootstrap check migrations migrate storage logs worker-logs beat-logs api-validate smoke schema test test-all e2e e2e-reset load-smoke observability security prod-init prod-config prod-up prod-down prod-logs prod-backup prod-smoke
 
 up:
-	docker compose up -d
+	docker compose up -d frontend worker beat
 
 build:
-	docker compose build api
+	docker compose build api frontend
 
 bootstrap:
-	docker compose run --rm api sh scripts/bootstrap_dev.sh
+	docker compose up -d --build frontend worker beat
 
 check:
 	docker compose run --rm api python manage.py check
@@ -22,16 +23,16 @@ storage:
 	docker compose run --rm api python manage.py ensure_object_storage
 
 logs:
-	docker compose logs -f api
-
-down:
-	docker compose down
+	docker compose logs -f api frontend
 
 worker-logs:
 	docker compose logs -f worker
 
 beat-logs:
 	docker compose logs -f beat
+
+down:
+	docker compose down
 
 api-validate:
 	docker compose run --rm api sh scripts/validate_api.sh
@@ -51,11 +52,17 @@ test-all:
 e2e:
 	./scripts/run_e2e.sh
 
+e2e-reset:
+	./scripts/e2e_reset.sh
+
 load-smoke:
 	python3 scripts/load_smoke.py
 
 observability:
 	docker compose run --rm api python manage.py observability_report
+
+security:
+	./scripts/security_audit_repo.sh
 
 prod-config:
 	./scripts/prod_config_check.sh

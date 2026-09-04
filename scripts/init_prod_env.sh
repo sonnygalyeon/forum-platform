@@ -1,3 +1,4 @@
+
 #!/bin/sh
 set -eu
 
@@ -18,7 +19,7 @@ case "$ACME_EMAIL" in
   *) echo "ACME email must look like name@example.com" >&2; exit 1 ;;
 esac
 
-python - "$APP_DOMAIN" "$MEDIA_DOMAIN" "$ACME_EMAIL" <<'PY'
+python - "$APP_DOMAIN" "$MEDIA_DOMAIN" "$ACME_EMAIL" <<'PYENV'
 from pathlib import Path
 import secrets
 import sys
@@ -26,24 +27,24 @@ import sys
 app_domain, media_domain, email = sys.argv[1:]
 template = Path('.env.prod.example').read_text()
 replacements = {
-    'forum.example.com': app_domain,
-    'media.' + app_domain: media_domain,  # harmless if template already replaced below
     'media.forum.example.com': media_domain,
+    'forum.example.com': app_domain,
     'admin@example.com': email,
     'replace-with-a-long-random-secret': secrets.token_urlsafe(64),
     'replace-with-another-long-random-secret': secrets.token_urlsafe(64),
     'replace-with-a-strong-database-password': secrets.token_urlsafe(36),
-    'replace-with-a-long-access-key': secrets.token_hex(16),
+    'replace-with-a-minio-root-user': 'root' + secrets.token_hex(12),
+    'replace-with-a-minio-root-password': secrets.token_urlsafe(48),
+    'replace-with-a-long-access-key': 'app' + secrets.token_hex(12),
     'replace-with-a-long-secret-key': secrets.token_urlsafe(48),
     'replace-with-a-long-metrics-token': secrets.token_urlsafe(48),
 }
-# Longer/more-specific strings first so media domain is not partially rewritten.
 for old in sorted(replacements, key=len, reverse=True):
     template = template.replace(old, replacements[old])
 Path('.env.prod').write_text(template)
-PY
+PYENV
 
 chmod 600 .env.prod
 
-echo "Created .env.prod with generated secrets. Review it before deployment."
-echo "Run: ./scripts/prod_config_check.sh"
+echo "Created .env.prod with NEW generated secrets."
+echo "Review it, then run: ./scripts/prod_config_check.sh"

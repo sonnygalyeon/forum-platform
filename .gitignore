@@ -1,23 +1,47 @@
-# Python
+
 __pycache__/
 *.py[cod]
-
-# Virtual environment
 .venv/
-
-# Environment
-.env
-
-# IDE
+.DS_Store
 .vscode/
 .idea/
-
-# macOS
-.DS_Store
-
-# Django
 staticfiles/
 media/
-
-# Logs
 *.log
+
+# Secrets / local environment. Commit examples only.
+.env
+.env.*
+!.env.example
+!.env.prod.example
+!frontend/.env.example
+
+# Database / user-data dumps must never be committed.
+*.sql
+*.dump
+*.dump.gz
+*.sqlite3
+
+# Test / coverage artifacts.
+.coverage
+.coverage.*
+htmlcov/
+.pytest_cache/
+coverage.xml
+frontend/test-results/
+frontend/playwright-report/
+frontend/blob-report/
+frontend/.playwright/
+
+# Frontend build/runtime artifacts.
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/npm-debug.log*
+frontend/tsconfig.tsbuildinfo
+
+# Backups remain local.
+backups/postgres/*.dump
+backups/postgres/*.sha256
+backups/minio/*
+!backups/minio/.gitkeep

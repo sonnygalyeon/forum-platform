@@ -1,0 +1,12 @@
+.git
+.gitignore
+.venv
+__pycache__
+*.pyc
+.env*
+.DS_Store
+frontend/node_modules
+frontend/.next
+frontend/.env*
+backups
+*.zip

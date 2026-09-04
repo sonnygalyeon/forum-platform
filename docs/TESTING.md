@@ -65,3 +65,22 @@ python3 scripts/load_smoke.py \
 ```
 
 Use `--path` multiple times to choose endpoints. The report includes throughput, status counts and p50/p95/p99 latency.
+
+## Stabilized local E2E topology
+
+Local Playwright now starts `compose.yaml + compose.e2e.yaml` automatically,
+which runs Next.js and Django on the same Docker network and uses isolated
+PostgreSQL/Redis/MinIO volumes. This avoids host Node -> Docker Desktop socket
+reset behavior and prevents QA data from polluting the normal development DB.
+
+```bash
+cd frontend
+npm ci
+npx playwright test
+```
+
+To remove the isolated test volumes:
+
+```bash
+../scripts/e2e_reset.sh
+```

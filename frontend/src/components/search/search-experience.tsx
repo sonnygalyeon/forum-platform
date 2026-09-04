@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Compass, Search, SlidersHorizontal, Sparkles } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -22,6 +22,37 @@ function SectionTitle({ title, count }: { title: string; count?: number }) {
   return <div className="section-heading search-section-heading"><h2>{title}</h2>{typeof count === "number" ? <span>{count}</span> : null}</div>;
 }
 
+
+function SearchForm({
+  initialValue,
+  onSearch,
+}: {
+  initialValue: string;
+  onSearch: (value: string) => void;
+}) {
+  const [input, setInput] = useState(initialValue);
+
+  function submit(event: FormEvent) {
+    event.preventDefault();
+    onSearch(input.trim());
+  }
+
+  return (
+    <form className="search-main-form" onSubmit={submit}>
+      <Search size={19} />
+      <input
+        value={input}
+        onChange={event => setInput(event.target.value)}
+        placeholder="Например: django redis cache"
+        autoFocus
+      />
+      <button className="primary-button" type="submit">
+        Найти
+      </button>
+    </form>
+  );
+}
+
 export function SearchExperience() {
   const router = useRouter();
   const params = useSearchParams();
@@ -32,9 +63,6 @@ export function SearchExperience() {
   const sort = params.get("sort") ?? "relevance";
   const accepted = params.get("accepted") ?? "";
   const tag = params.get("tag") ?? "";
-  const [input, setInput] = useState(queryText);
-
-  useEffect(() => { setInput(queryText); }, [queryText]);
 
   const searchUrl = useMemo(() => {
     const next = new URLSearchParams();
@@ -69,11 +97,6 @@ export function SearchExperience() {
     router.push(`/search${next.toString() ? `?${next.toString()}` : ""}`);
   }
 
-  function submit(event: FormEvent) {
-    event.preventDefault();
-    push({ q: input.trim() || null, tag: null });
-  }
-
   return (
     <>
       <section className="search-hero">
@@ -85,11 +108,13 @@ export function SearchExperience() {
         <Compass size={32} />
       </section>
 
-      <form className="search-main-form" onSubmit={submit}>
-        <Search size={19} />
-        <input value={input} onChange={(event) => setInput(event.target.value)} placeholder="Например: django redis cache" autoFocus />
-        <button className="primary-button" type="submit">Найти</button>
-      </form>
+      <SearchForm
+        key={queryText}
+        initialValue={queryText}
+        onSearch={value =>
+          push({ q: value || null, tag: null })
+        }
+      />
 
       {hasSearchState ? (
         <>

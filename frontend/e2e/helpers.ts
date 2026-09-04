@@ -119,7 +119,10 @@ export async function registerQaUser(
     payload,
   );
 
-  expect(result.status).toBe(201);
+  expect(
+    result.status,
+    `Registration failed: ${JSON.stringify(result.data)}`,
+  ).toBe(201);
 
   const body = result.data as RegisterResponse;
 

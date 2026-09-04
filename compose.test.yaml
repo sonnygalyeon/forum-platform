@@ -1,0 +1,33 @@
+services:
+  db:
+    image: postgres:18-bookworm
+    environment:
+      POSTGRES_DB: forum_test_control
+    volumes:
+      - postgres_backend_test_data:/var/lib/postgresql
+
+  redis:
+    volumes:
+      - redis_backend_test_data:/data
+
+  minio:
+    volumes:
+      - minio_backend_test_data:/data
+
+  migrate:
+    environment:
+      POSTGRES_DB: forum_test_control
+      DRF_THROTTLE_AUTH: 1000/min
+      METRICS_ENABLED: "0"
+
+  api:
+    environment:
+      POSTGRES_DB: forum_test_control
+      DRF_THROTTLE_AUTH: 1000/min
+      DRF_THROTTLE_ANON: 5000/min
+      DRF_THROTTLE_USER: 5000/min
+
+volumes:
+  postgres_backend_test_data:
+  redis_backend_test_data:
+  minio_backend_test_data:

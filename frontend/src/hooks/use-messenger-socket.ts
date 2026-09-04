@@ -30,7 +30,9 @@ export function useMessengerSocket(
   const [connected, setConnected] = useState(false);
   const [syncing, setSyncing] = useState(false);
 
-  callbackRef.current = onEvent;
+  useEffect(() => {
+    callbackRef.current = onEvent;
+  }, [onEvent]);
 
   const cursorKey = `${CURSOR_PREFIX}:${cursorNamespace}`;
 

@@ -1,6 +1,19 @@
-# Night Iris Forum 0.8.11 — Testing & Observability
+# Night Iris Forum 0.8.11 — Security & Stabilization
 
 Current full project: Django API + Next.js frontend + custom administration + social identity + search/discovery + production foundation + realtime messenger. Stage 8.10 adds durable messenger event sync, delivery/read receipts, server drafts, forwarding, edit history, per-user deletion, pinned conversations, messenger privacy/settings, shared media/files/links, browser notifications, resilient reconnect/resync and large-history loading. See `STAGE_8_10_MESSENGER_CORE_V2.md` and `MESSENGER_PROTOCOL.md`.
+
+
+## 0.8.11 stabilization repair
+
+The current tree includes the security/reproducibility repair: locked Python and Node builds, Dockerized development frontend, isolated E2E infrastructure, resilient BFF transport, MinIO privilege separation, and repository secret hygiene. See `STAGE_8_11_SECURITY_STABILIZATION.md` and `SECURITY.md`.
+
+Recommended development start:
+
+```bash
+cp .env.example .env
+docker compose up -d --build frontend worker beat
+```
+
 
 ---
 
@@ -399,7 +412,7 @@ After Stage 7.2 the Web frontend can start without repeatedly redesigning its AP
 
 ## Current project stage
 
-Stage **8.4 — Complete User Experience**. See `STAGE_8_4_COMPLETE_UX.md`.
+Stage **8.11 — Security & Stabilization**. See `STAGE_8_11_SECURITY_STABILIZATION.md`, `docs/TESTING.md`, and `docs/OBSERVABILITY.md`.
 
 ## Production (Stage 8.7)
 

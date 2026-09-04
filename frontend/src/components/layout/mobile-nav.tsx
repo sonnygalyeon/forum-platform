@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Bell, Home, MessageCircle, Plus, Search, UserRound, UsersRound } from "lucide-react";
+import { Home, MessageCircle, Plus, Search, UserRound, UsersRound } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/providers/auth-provider";
 import { MessengerUnreadBadge } from "@/components/messenger/unread-badge";

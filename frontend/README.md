@@ -1,33 +1,41 @@
-# Night Iris Forum Web — 0.8.6
+
+# Night Iris Forum Web — 0.8.11
 
 Next.js frontend for the Night Iris Forum Django API.
 
-## Run
+## Recommended development
+
+Run the frontend in the same Docker network as Django:
+
+```bash
+cd ..
+cp .env.example .env
+docker compose up -d --build frontend
+```
+
+Open `http://127.0.0.1:3000`.
+
+## Host-only development
+
+If you intentionally run Node on macOS:
 
 ```bash
 cp .env.example .env.local
-npm install
-npm run build
+npm ci
 npm run dev
 ```
 
-Open `http://localhost:3000`.
+The host profile uses `BACKEND_DISABLE_KEEPALIVE=1` because Docker Desktop
+host-to-container keep-alive sockets can reset under Node/Undici. Production and
+Docker-to-Docker development keep connection pooling enabled.
 
-`BACKEND_API_URL` is server-only and normally points to `http://localhost:8000/api/v1`.
+## E2E
 
-## Main routes
+```bash
+npm ci
+npx playwright test
+```
 
-- `/` — latest / subscriptions feed
-- `/register`, `/login`
-- `/profile`, `/profile/edit`
-- `/users/<uuid>` — public social profile
-- `/new` — structured publication editor
-- `/publications/<uuid>` — publication + discussion
-- `/publications/<uuid>/edit`
-- `/publications/<uuid>/revisions`
-- `/communities`
-- `/communities/<uuid>`
-- `/notifications`
-- `/admin` — custom staff panel
-
-Large media files are uploaded directly to object storage using presigned multipart URLs.
+Local Playwright starts an isolated Docker E2E stack automatically. Set
+`PLAYWRIGHT_MANAGE_WEBSERVER=0` only when you deliberately manage the server
+outside Playwright.

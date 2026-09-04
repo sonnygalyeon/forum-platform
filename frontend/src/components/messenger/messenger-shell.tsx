@@ -198,6 +198,10 @@ export function MessengerShell({ initialConversationId }: { initialConversationI
 
   const { connected, syncing, sendActivity, sendTyping } = useMessengerSocket(handleEvent, Boolean(user), user?.id ?? "anonymous");
 
+  // Conversation identity comes from the route/query layer. Resetting all
+  // conversation-scoped transient UI state here is intentional; moving these
+  // resets into click handlers would break browser back/forward and deep links.
+  /* eslint-disable react-hooks/set-state-in-effect -- route identity intentionally resets conversation-local UI state */
   useEffect(() => {
     if (!selectedId || typeof window === "undefined") return;
     setText(window.localStorage.getItem(`night-iris:draft:${selectedId}`) ?? "");
@@ -211,7 +215,12 @@ export function MessengerShell({ initialConversationId }: { initialConversationI
     setForwarding(null);
     setHistoryMessage(null);
   }, [selectedId]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
+  // The server draft is durable cross-device state. When it arrives, mirror
+  // it into the local composer and browser cache. This is a deliberate
+  // synchronization boundary between TanStack Query and the editor state.
+  /* eslint-disable react-hooks/set-state-in-effect -- server draft intentionally hydrates local composer state */
   useEffect(() => {
     if (!selectedId || !draftQuery.data) return;
     setText(draftQuery.data.text);
@@ -221,6 +230,7 @@ export function MessengerShell({ initialConversationId }: { initialConversationI
       else window.localStorage.removeItem(key);
     }
   }, [draftQuery.data, selectedId]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const allMessages = useMemo(() => {
     const current = messages.data?.results ?? [];

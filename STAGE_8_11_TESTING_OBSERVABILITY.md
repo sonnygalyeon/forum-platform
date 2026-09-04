@@ -35,3 +35,29 @@ The first full pytest run exposed two API-contract regressions:
   handler to `error.code = "not_found"` instead of the generic `api_error`.
 
 Both cases are already covered by `apps/core/tests.py`.
+
+## E2E authentication hotfix
+
+The first Playwright runtime run exposed two issues in the smoke-test contract:
+
+- registration through `APIRequestContext` now explicitly copies the BFF
+  `Set-Cookie` values into the browser context before navigation;
+- the authenticated-shell assertion no longer expects the user's nickname to
+  appear in page text. Night Iris currently represents authentication through
+  Profile/Messages/Create controls, while the nickname is available through
+  `/api/auth/me`.
+
+The helper also verifies `/api/auth/me` immediately after registration, so an
+authentication-cookie regression fails at its real source instead of several
+steps later in a UI assertion.
+
+## Browser-auth E2E hotfix
+
+Playwright authentication now happens through the actual Chromium page instead
+of APIRequestContext cookie state.
+
+The browser loads Night Iris first, performs same-origin registration with
+`fetch("/api/auth/register")`, lets Chromium process the HttpOnly cookies, and
+then polls browser-side `/api/auth/me`. Article creation is also exercised
+through browser fetch so the frontend BFF and HttpOnly-cookie path are tested
+end-to-end.

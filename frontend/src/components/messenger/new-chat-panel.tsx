@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Check, Search, UsersRound, X } from "lucide-react";
 import { clientApi, errorMessage } from "@/lib/client-api";

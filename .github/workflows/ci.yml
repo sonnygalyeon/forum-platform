@@ -1,0 +1,187 @@
+
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  security-hygiene:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: ./scripts/security_audit_repo.sh
+
+  backend:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_DB: forum
+          POSTGRES_USER: forum
+          POSTGRES_PASSWORD: forum
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U forum -d forum"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:8-alpine
+        ports:
+          - 6379:6379
+
+    env:
+      DJANGO_SECRET_KEY: ci-secret-key-that-is-not-used-outside-ci
+      JWT_SIGNING_KEY: ci-jwt-key-that-is-not-used-outside-ci
+      DJANGO_DEBUG: "0"
+      DJANGO_ALLOWED_HOSTS: localhost,testserver,127.0.0.1
+      POSTGRES_DB: forum
+      POSTGRES_USER: forum
+      POSTGRES_PASSWORD: forum
+      POSTGRES_HOST: 127.0.0.1
+      POSTGRES_PORT: "5432"
+      REDIS_CACHE_URL: redis://127.0.0.1:6379/1
+      CHANNEL_REDIS_URL: redis://127.0.0.1:6379/2
+      CELERY_BROKER_URL: redis://127.0.0.1:6379/0
+      S3_ACCESS_KEY: ci-access
+      S3_SECRET_KEY: ci-secret
+      S3_BUCKET: forum-media
+      S3_INTERNAL_ENDPOINT: http://127.0.0.1:9000
+      S3_PUBLIC_ENDPOINT: http://127.0.0.1:9000
+      READINESS_CHECK_S3: "0"
+      API_DOCS_ENABLED: "1"
+      METRICS_ENABLED: "1"
+      METRICS_TOKEN: ci-metrics-token
+      SLOW_QUERY_MS: "0"
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.13"
+      - run: uv sync --frozen --group dev
+      - run: uv run python manage.py check
+      - run: uv run python manage.py makemigrations --check --dry-run
+      - run: uv run python manage.py spectacular --file /tmp/forum-openapi.yml --validate --fail-on-warn
+      - run: uv run pytest --cov=apps --cov=config --cov-report=term-missing --cov-fail-under=25
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - run: npm run lint
+      - run: npm run build
+
+  e2e:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_DB: forum
+          POSTGRES_USER: forum
+          POSTGRES_PASSWORD: forum
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U forum -d forum"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:8-alpine
+        ports:
+          - 6379:6379
+
+    env:
+      DJANGO_SECRET_KEY: e2e-secret-key
+      JWT_SIGNING_KEY: e2e-jwt-key
+      DJANGO_DEBUG: "0"
+      DJANGO_ALLOWED_HOSTS: localhost,testserver,127.0.0.1
+      POSTGRES_DB: forum
+      POSTGRES_USER: forum
+      POSTGRES_PASSWORD: forum
+      POSTGRES_HOST: 127.0.0.1
+      POSTGRES_PORT: "5432"
+      REDIS_CACHE_URL: redis://127.0.0.1:6379/1
+      CHANNEL_REDIS_URL: redis://127.0.0.1:6379/2
+      CELERY_BROKER_URL: redis://127.0.0.1:6379/0
+      S3_ACCESS_KEY: e2e-access
+      S3_SECRET_KEY: e2e-secret
+      S3_BUCKET: forum-media
+      S3_INTERNAL_ENDPOINT: http://127.0.0.1:9000
+      S3_PUBLIC_ENDPOINT: http://127.0.0.1:9000
+      READINESS_CHECK_S3: "0"
+      API_DOCS_ENABLED: "0"
+      CORS_ALLOWED_ORIGINS: http://127.0.0.1:3000
+      METRICS_ENABLED: "0"
+      DRF_THROTTLE_AUTH: 1000/min
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.13"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: uv sync --frozen --no-dev
+      - run: uv run python manage.py migrate --noinput
+      - name: Start Django ASGI
+        run: |
+          uv run daphne -b 127.0.0.1 -p 8000 config.asgi:application >/tmp/night-iris-backend.log 2>&1 &
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8000/api/v1/live/ >/dev/null; then exit 0; fi
+            sleep 1
+          done
+          cat /tmp/night-iris-backend.log
+          exit 1
+      - name: Install frontend and Chromium
+        working-directory: frontend
+        run: |
+          npm ci --no-audit --no-fund
+          npx playwright install --with-deps chromium
+      - name: Start Next.js
+        working-directory: frontend
+        env:
+          BACKEND_API_URL: http://127.0.0.1:8000/api/v1
+          BACKEND_FETCH_TIMEOUT_MS: "10000"
+          BACKEND_DISABLE_KEEPALIVE: "1"
+        run: |
+          npm run dev >/tmp/night-iris-frontend.log 2>&1 &
+          for i in $(seq 1 45); do
+            if curl -fsS http://127.0.0.1:3000/ >/dev/null; then exit 0; fi
+            sleep 1
+          done
+          cat /tmp/night-iris-frontend.log
+          exit 1
+      - name: Playwright Chromium
+        working-directory: frontend
+        env:
+          PLAYWRIGHT_BASE_URL: http://127.0.0.1:3000
+          PLAYWRIGHT_MANAGE_WEBSERVER: "0"
+        run: npx playwright test --project=chromium
+
+  production-compose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: cp .env.prod.example .env.prod
+      - run: docker compose --env-file .env.prod -f compose.prod.yaml config >/dev/null
