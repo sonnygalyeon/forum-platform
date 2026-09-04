@@ -30,6 +30,11 @@ from openapi_enums import (
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / ".env")
 
+APP_VERSION = os.environ.get("APP_VERSION", "").strip()
+if not APP_VERSION:
+    APP_VERSION = (BASE_DIR / "VERSION").read_text(encoding="utf-8").strip()
+BUILD_SHA = os.environ.get("BUILD_SHA", "unknown").strip() or "unknown"
+
 SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "unsafe-development-key")
 DEBUG = os.environ.get("DJANGO_DEBUG", "0") == "1"
 ALLOWED_HOSTS = [
@@ -256,7 +261,7 @@ CORS_ALLOW_CREDENTIALS = False
 SPECTACULAR_SETTINGS = {
     "TITLE": "Night Iris API",
     "DESCRIPTION": "Stable API contract for Night Iris Web, Android and iOS clients.",
-    "VERSION": "0.9.0-beta.1",
+    "VERSION": APP_VERSION,
     "SERVE_INCLUDE_SCHEMA": False,
     "OAS_VERSION": "3.1.0",
     "COMPONENT_SPLIT_REQUEST": True,
@@ -291,7 +296,6 @@ SPECTACULAR_SETTINGS = {
     },
 }
 
-# Stage 8.11 — testing & observability
 LOG_LEVEL = os.environ.get("LOG_LEVEL", "INFO").upper()
 LOG_FORMAT = os.environ.get("LOG_FORMAT", "console" if DEBUG else "json").lower()
 SLOW_QUERY_MS = int(os.environ.get("SLOW_QUERY_MS", "250"))
@@ -335,7 +339,7 @@ if SENTRY_DSN:
         dsn=SENTRY_DSN,
         integrations=[DjangoIntegration(), CeleryIntegration()],
         environment=os.environ.get("SENTRY_ENVIRONMENT", "production" if not DEBUG else "development"),
-        release=os.environ.get("SENTRY_RELEASE", "night-iris@0.9.0-beta.1"),
+        release=os.environ.get("SENTRY_RELEASE", f"night-iris@{APP_VERSION}"),
         traces_sample_rate=float(os.environ.get("SENTRY_TRACES_SAMPLE_RATE", "0.05")),
         send_default_pii=False,
     )

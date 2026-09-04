@@ -23,6 +23,15 @@ ReadyResponseSerializer = inline_serializer(
     },
 )
 
+VersionResponseSerializer = inline_serializer(
+    name="VersionResponse",
+    fields={
+        "name": serializers.CharField(),
+        "version": serializers.CharField(),
+        "build": serializers.CharField(),
+    },
+)
+
 
 @extend_schema_view(
     get=extend_schema(
@@ -86,6 +95,27 @@ class ReadyView(APIView):
                 if ready
                 else status.HTTP_503_SERVICE_UNAVAILABLE
             ),
+        )
+
+
+@extend_schema_view(
+    get=extend_schema(
+        responses={200: VersionResponseSerializer},
+        summary="Release provenance",
+    )
+)
+class VersionView(APIView):
+    authentication_classes = []
+    permission_classes = [AllowAny]
+    throttle_classes = []
+
+    def get(self, request):
+        return Response(
+            {
+                "name": "night-iris",
+                "version": settings.APP_VERSION,
+                "build": settings.BUILD_SHA,
+            }
         )
 
 

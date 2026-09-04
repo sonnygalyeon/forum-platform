@@ -14,7 +14,11 @@ esac
 
 mkdir -p "$STATE_DIR"
 export APP_IMAGE_TAG="$RELEASE_TAG"
+export APP_VERSION="$(cat VERSION)"
+export BUILD_SHA="$(git rev-parse HEAD)"
+export SENTRY_RELEASE="night-iris@$APP_VERSION"
 
+./scripts/version_check.py
 ./scripts/prod_config_check.sh "$ENV_FILE"
 ./scripts/security_audit_repo.sh
 
@@ -50,9 +54,9 @@ $COMPOSE run --rm migrate
 $COMPOSE up -d --remove-orphans api worker beat frontend caddy
 
 for i in $(seq 1 40); do
-  if ./scripts/prod_smoke.sh >/dev/null 2>&1; then
+  if EXPECTED_VERSION="$APP_VERSION" EXPECTED_BUILD_SHA="$BUILD_SHA" ./scripts/prod_smoke.sh >/dev/null 2>&1; then
     printf '%s\n' "$RELEASE_TAG" > "$CURRENT_FILE"
-    echo "Production deployment passed: $RELEASE_TAG"
+    echo "Production deployment passed: $RELEASE_TAG ($APP_VERSION / $BUILD_SHA)"
     exit 0
   fi
   sleep 3

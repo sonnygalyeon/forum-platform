@@ -1,6 +1,6 @@
 [project]
 name = "forum-platform"
-version = "0.8.11"
+version = "1.0.0"
 description = "API-first forum platform built with Django REST Framework"
 requires-python = ">=3.13,<3.14"
 dependencies = [
@@ -20,6 +20,7 @@ dependencies = [
     "daphne>=4.2,<5",
     "prometheus-client>=0.22,<1",
     "sentry-sdk[django]>=2.35,<3",
+    "sqlparse>=0.6,<0.7",
 ]
 
 [dependency-groups]
