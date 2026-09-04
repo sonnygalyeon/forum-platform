@@ -40,8 +40,10 @@ frontend/out/
 frontend/npm-debug.log*
 frontend/tsconfig.tsbuildinfo
 
-# Backups remain local.
+# Backups and local deployment state remain local.
 backups/postgres/*.dump
 backups/postgres/*.sha256
 backups/minio/*
+backups/manifests/*
 !backups/minio/.gitkeep
+.deploy/
