@@ -1,12 +1,14 @@
 from collections import Counter
 
+from django.core.exceptions import ObjectDoesNotExist
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
 from apps.media.presentation import media_asset_payload
 from apps.messenger.models import Conversation, ConversationMember, Message, MessengerSettings
 from apps.messenger.presence import is_online
-from apps.messenger.services import can_view_presence
+from apps.messenger.selectors import blocked_user_ids_for
+from apps.social.models import UserFollow
 from apps.users.api.serializers import UserPublicSerializer
 
 
@@ -23,7 +25,43 @@ class MessengerMemberSerializer(serializers.ModelSerializer):
         request = self.context.get("request")
         if not request or not request.user.is_authenticated:
             return False
-        return can_view_presence(viewer=request.user, target=obj.user)
+        viewer = request.user
+        target = obj.user
+        if viewer.pk == target.pk:
+            return True
+
+        visibility_cache = self.context.setdefault("_presence_visibility_cache", {})
+        if target.pk in visibility_cache:
+            return visibility_cache[target.pk]
+
+        blocked_ids = self.context.get("_presence_blocked_ids")
+        if blocked_ids is None:
+            blocked_ids = blocked_user_ids_for(viewer)
+            self.context["_presence_blocked_ids"] = blocked_ids
+        if target.pk in blocked_ids:
+            visibility_cache[target.pk] = False
+            return False
+
+        try:
+            privacy = target.messenger_settings.who_can_see_presence
+        except ObjectDoesNotExist:
+            privacy = MessengerSettings.Privacy.EVERYONE
+
+        if privacy == MessengerSettings.Privacy.NOBODY:
+            allowed = False
+        elif privacy == MessengerSettings.Privacy.EVERYONE:
+            allowed = True
+        else:
+            followers = self.context.get("_presence_followers_of_viewer")
+            if followers is None:
+                followers = set(
+                    UserFollow.objects.filter(following=viewer).values_list("follower_id", flat=True)
+                )
+                self.context["_presence_followers_of_viewer"] = followers
+            allowed = target.pk in followers
+
+        visibility_cache[target.pk] = allowed
+        return allowed
 
     @extend_schema_field(serializers.BooleanField())
     def get_online(self, obj):
@@ -130,6 +168,8 @@ class MessageSerializer(serializers.ModelSerializer):
         receipts = list(obj.receipts.all())
         if receipts:
             return sum(1 for receipt in receipts if receipt.read_at)
+        if hasattr(obj, "_membership_read_count"):
+            return obj._membership_read_count
         return obj.conversation.memberships.exclude(user_id=obj.sender_id).filter(last_read_at__gte=obj.created_at).count()
 
     @extend_schema_field(serializers.CharField(allow_null=True))
@@ -244,6 +284,19 @@ class ConversationSerializer(serializers.ModelSerializer):
 
     @extend_schema_field(ConversationLastMessageSerializer(allow_null=True))
     def get_last_message(self, obj):
+        if hasattr(obj, "_last_message_public_id"):
+            if obj._last_message_public_id is None:
+                return None
+            deleted = bool(obj._last_message_deleted_at)
+            return {
+                "id": str(obj._last_message_public_id),
+                "sender_id": str(obj._last_message_sender_public_id),
+                "sender_nickname": obj._last_message_sender_nickname,
+                "text": "Сообщение удалено" if deleted else ((obj._last_message_text or "")[:160] or "Вложение"),
+                "created_at": obj._last_message_created_at,
+                "deleted": deleted,
+            }
+
         request = self.context.get("request")
         qs = obj.messages.select_related("sender")
         if request and request.user.is_authenticated:
@@ -262,6 +315,8 @@ class ConversationSerializer(serializers.ModelSerializer):
 
     @extend_schema_field(serializers.IntegerField())
     def get_unread_count(self, obj):
+        if hasattr(obj, "_unread_count"):
+            return obj._unread_count
         membership = self._membership(obj)
         if membership is None:
             return 0
