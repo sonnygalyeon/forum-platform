@@ -24,13 +24,13 @@ class AdminUserSerializer(serializers.ModelSerializer):
             "comment_count", "reputation", "level",
         ]
 
-    def get_reputation(self, obj):
+    def get_reputation(self, obj) -> int:
         try:
             return obj.identity_profile.reputation
         except Exception:
             return 0
 
-    def get_level(self, obj):
+    def get_level(self, obj) -> int:
         try:
             return obj.identity_profile.level
         except Exception:

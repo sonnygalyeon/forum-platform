@@ -1,3 +1,4 @@
+from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
 from apps.identity.models import AvatarFrame, Badge, UserBadge, UserFrame, UserIdentityProfile
@@ -55,6 +56,7 @@ class IdentityProfileSerializer(serializers.ModelSerializer):
             "badges", "updated_at",
         ]
 
+    @extend_schema_field(OwnedBadgeSerializer(many=True))
     def get_badges(self, obj):
         edges = (
             UserBadge.objects
@@ -72,10 +74,12 @@ class MyIdentitySerializer(IdentityProfileSerializer):
     class Meta(IdentityProfileSerializer.Meta):
         fields = IdentityProfileSerializer.Meta.fields + ["owned_frames", "owned_badges"]
 
+    @extend_schema_field(OwnedFrameSerializer(many=True))
     def get_owned_frames(self, obj):
         edges = UserFrame.objects.filter(user=obj.user).select_related("frame").order_by("frame__sort_order")
         return OwnedFrameSerializer(edges, many=True).data
 
+    @extend_schema_field(OwnedBadgeSerializer(many=True))
     def get_owned_badges(self, obj):
         edges = UserBadge.objects.filter(user=obj.user).select_related("badge").order_by("badge__sort_order")
         return OwnedBadgeSerializer(edges, many=True).data

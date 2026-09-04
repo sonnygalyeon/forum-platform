@@ -8,6 +8,12 @@ COMPOSE="docker compose --env-file $ENV_FILE -f compose.prod.yaml"
 
 $COMPOSE pull db redis minio caddy
 $COMPOSE build api worker beat migrate frontend
+
+# Deployment checks run against the exact production image and environment.
+# --no-deps avoids mutating production data before the gate has passed.
+$COMPOSE run --rm --no-deps api \
+  python manage.py check --deploy --fail-level WARNING
+
 $COMPOSE up -d --remove-orphans
 $COMPOSE ps
 

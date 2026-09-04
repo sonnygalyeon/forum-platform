@@ -1,3 +1,4 @@
+import json
 from unittest.mock import MagicMock, patch
 
 from django.core.cache import cache
@@ -16,7 +17,7 @@ class HealthEndpointTests(TestCase):
         self.assertEqual(response.json(), {"status": "ok"})
 
     @override_settings(READINESS_CHECK_S3=True)
-    @patch("apps.core.views.get_internal_s3_client")
+    @patch("apps.core.views.internal_client")
     @patch.object(cache, "get", return_value="ok")
     @patch.object(cache, "set", return_value=True)
     def test_ready_checks_database_redis_and_storage(self, cache_set, cache_get, get_s3):
@@ -57,3 +58,25 @@ class ApiContractTests(TestCase):
     def test_openapi_schema_endpoint_is_available(self):
         response = self.client.get("/api/schema/")
         self.assertEqual(response.status_code, 200)
+
+    @patch("apps.core.csp.logger.warning")
+    def test_csp_report_accepts_browser_content_type(self, warning):
+        response = self.client.generic(
+            "POST",
+            "/api/v1/csp-report/",
+            data=json.dumps(
+                {
+                    "csp-report": {
+                        "document-uri": "https://forum.example.test/",
+                        "violated-directive": "script-src-elem",
+                        "blocked-uri": "https://evil.example/script.js",
+                    }
+                }
+            ),
+            content_type="application/csp-report",
+        )
+        self.assertEqual(response.status_code, 204)
+        warning.assert_called_once()
+        diagnostic = warning.call_args.kwargs["extra"]["csp"]
+        self.assertEqual(diagnostic["violated-directive"], "script-src-elem")
+        self.assertEqual(diagnostic["blocked-uri"], "https://evil.example/script.js")
