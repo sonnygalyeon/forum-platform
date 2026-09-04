@@ -1,0 +1,62 @@
+name: Release Candidate Gate
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  rc-artifact-gate:
+    runs-on: ubuntu-latest
+    env:
+      APP_IMAGE_TAG: rc-${{ github.sha }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate shell entrypoints
+        run: |
+          sh -n scripts/backup_all.sh
+          sh -n scripts/backup_postgres.sh
+          sh -n scripts/backup_minio.sh
+          sh -n scripts/verify_backup.sh
+          sh -n scripts/restore_postgres.sh
+          sh -n scripts/restore_minio.sh
+          sh -n scripts/restore_all.sh
+          sh -n scripts/deploy_prod.sh
+          sh -n scripts/rollback_prod.sh
+          sh -n scripts/prod_config_check.sh
+          sh -n scripts/prod_smoke.sh
+          sh -n scripts/release_manifest.sh
+
+      - name: Validate production Compose
+        run: |
+          cp .env.prod.example .env.prod
+          docker compose --env-file .env.prod -f compose.prod.yaml config >/dev/null
+
+      - name: Validate Caddy
+        run: >-
+          docker run --rm
+          -e APP_DOMAIN=forum.example.com
+          -e MEDIA_DOMAIN=media.forum.example.com
+          -e ACME_EMAIL=admin@example.com
+          -v "$PWD/deploy/caddy/Caddyfile:/etc/caddy/Caddyfile:ro"
+          caddy:2-alpine
+          caddy validate --config /etc/caddy/Caddyfile
+
+      - name: Build tagged production images
+        run: >-
+          docker compose --env-file .env.prod -f compose.prod.yaml
+          build api frontend
+
+      - name: Generate immutable release manifest
+        run: ./scripts/release_manifest.sh /tmp/night-iris-release-manifest.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: night-iris-${{ github.sha }}-release-manifest
+          path: /tmp/night-iris-release-manifest.txt
+          if-no-files-found: error
