@@ -1,14 +1,18 @@
-# Forum Platform API Contract — v1
+# Night Iris API Contract v1
 
-Stage 7.2 establishes the API contract that the first Web frontend may build against.
+Night Iris 1.0 treats `/api/v1/` as a public compatibility boundary for Web and future mobile clients.
+
+The compatibility baseline is the final green `0.9.0-beta.1` commit:
+
+`0003228145934f837d38f3610db730bec69a5c18`
+
+Existing v1 paths and payload contracts must not be silently broken by normal `1.x` development. A deliberately incompatible redesign requires an explicit API-version decision, normally `/api/v2/`, plus a migration/deprecation plan.
 
 ## Base URL
 
 ```text
 /api/v1/
 ```
-
-The existing `v1` path is retained. Backward-incompatible changes should not silently change existing v1 payloads.
 
 ## Authentication
 
@@ -18,11 +22,11 @@ JWT access tokens are sent as:
 Authorization: Bearer <access-token>
 ```
 
-Access tokens are short-lived. Refresh tokens are rotated by the refresh endpoint.
+Access tokens are short-lived. Refresh tokens are rotated and blacklisted after rotation according to backend settings.
 
 ## Errors
 
-DRF-generated failures use:
+DRF failures use the stable envelope:
 
 ```json
 {
@@ -35,47 +39,95 @@ DRF-generated failures use:
 }
 ```
 
-`fields` is present for validation errors. `retry_after` may be present for HTTP 429 throttling responses.
+`fields` is present for validation errors. HTTP 429 responses may additionally expose `retry_after`.
 
 ## Pagination
 
-Timeline/list endpoints use cursor pagination where configured. Clients must follow the returned `next` / `previous` URLs instead of constructing cursor values themselves.
+Timeline/list endpoints use cursor pagination where configured. Clients follow returned `next` and `previous` URLs and must not manufacture cursor tokens.
 
-## Dates
+## IDs and timestamps
 
-Django/DRF timestamps are serialized as ISO-8601 values. Clients must treat them as timestamps, not localized display strings.
+- public object IDs are UUIDs;
+- internal numeric primary keys are not API identifiers;
+- timestamps are ISO-8601 values and clients localize them for display.
 
-## IDs
+## Structured content
 
-Public API object IDs are UUIDs. Internal numeric database primary keys are not part of the API contract.
-
-## Content
-
-Publications and comments use structured JSON blocks. Clients should switch on the block `type` and gracefully ignore unsupported future block types where possible.
+Publications and comments use structured JSON blocks. Clients switch on block `type` and should gracefully ignore future unsupported block types when possible.
 
 ## Media
 
-Large media bytes do not pass through Django. Clients request multipart upload authorization from the API and upload directly to the S3-compatible endpoint with presigned URLs.
+Large bytes do not transit Django. The client obtains multipart upload authorization and uploads directly to S3-compatible object storage with presigned URLs.
 
-## Visibility
+Media availability is stateful. Assets may be uploading, pending scan, ready, aborted or rejected. Clients must not assume that multipart completion immediately implies public availability when scanning is required.
 
-Blocked/muted historical content is not silently deleted from thread history. Viewer-relative flags instruct clients when content should be collapsed or filtered.
+## Visibility and trust
 
-## OpenAPI
+Blocked/muted historical content remains structurally present where thread history requires it. Viewer-relative flags tell clients when content should be collapsed, filtered or made non-interactive.
 
-```text
-/api/schema/
-/api/docs/
-/api/redoc/
-```
+Reports and moderation are authorization-scoped. Community moderators cannot use community endpoints to moderate unrelated communities.
 
-The OpenAPI schema is the machine-readable reference for endpoint input/output structure.
+## Realtime messenger
 
-## Stage 8.6 — Search & Discovery
+REST owns durable conversation/message state and synchronization cursors. WebSocket transport delivers realtime events and uses one-time authenticated tickets. Reconnect flows must resynchronize durable events instead of assuming an uninterrupted socket.
+
+See `MESSENGER_PROTOCOL.md` for the realtime protocol.
+
+## Discovery
 
 ```text
 GET /api/v1/search/
 GET /api/v1/discover/
 ```
 
-`/search/` supports `q`, `scope`, `type`, `date`, `sort`, `accepted`, and `tag` query parameters. Search results are visibility-aware and reuse the existing blocked/muted publication semantics.
+Search is visibility-aware. Personalized discovery is intentionally explainable and degrades to deterministic cold-start content for accounts without sufficient history.
+
+## Health and provenance
+
+```text
+GET /api/v1/live/       process liveness
+GET /api/v1/ready/      dependency readiness
+GET /api/v1/health/     backwards-compatible readiness alias
+GET /api/v1/version/    application version + full build SHA
+```
+
+`ready` returns HTTP 503 when a required dependency is unavailable.
+
+## OpenAPI
+
+When API docs are enabled:
+
+```text
+GET /api/schema/
+GET /api/docs/
+GET /api/redoc/
+```
+
+The generated OpenAPI 3.1 document is the machine-readable structural reference.
+
+CI generates the current schema with `--validate --fail-on-warn` and compares it with the final 0.9 beta schema using `scripts/check_openapi_compat.py`.
+
+The compatibility gate rejects common breaking changes, including:
+
+- removed v1 paths or HTTP operations;
+- removed existing response status codes;
+- removed existing parameters;
+- newly required parameters or request bodies;
+- removed component schemas/properties;
+- newly required fields on existing object schemas;
+- type/format changes;
+- removed enum values.
+
+This machine check complements, rather than replaces, backend integration tests and browser E2E.
+
+## Compatibility policy after 1.0
+
+Additive changes are the normal path for v1. Examples include new optional response fields, new endpoints, or new optional query parameters.
+
+Before making an incompatible change, choose one of these explicitly:
+
+1. preserve v1 behavior and add a new optional mechanism;
+2. deprecate old behavior with a documented transition period;
+3. introduce a new API version.
+
+Deleting an old field because the frontend no longer happens to use it is not an API migration strategy.
