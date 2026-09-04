@@ -4,8 +4,6 @@ x-logging: &default-logging
     max-size: "10m"
     max-file: "5"
 
-# Application containers receive only application credentials. In particular,
-# MINIO_ROOT_* never enters Django/Celery/Next.js containers.
 x-app-env: &app-env
   DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY}
   JWT_SIGNING_KEY: ${JWT_SIGNING_KEY}
@@ -126,6 +124,7 @@ services:
     logging: *default-logging
 
   migrate:
+    image: night-iris-backend:${APP_IMAGE_TAG:-local}
     build:
       context: .
       dockerfile: Dockerfile.prod
@@ -147,6 +146,7 @@ services:
     logging: *default-logging
 
   api:
+    image: night-iris-backend:${APP_IMAGE_TAG:-local}
     build:
       context: .
       dockerfile: Dockerfile.prod
@@ -176,6 +176,7 @@ services:
     logging: *default-logging
 
   worker:
+    image: night-iris-backend:${APP_IMAGE_TAG:-local}
     build:
       context: .
       dockerfile: Dockerfile.prod
@@ -190,6 +191,7 @@ services:
     logging: *default-logging
 
   beat:
+    image: night-iris-backend:${APP_IMAGE_TAG:-local}
     build:
       context: .
       dockerfile: Dockerfile.prod
@@ -204,6 +206,7 @@ services:
     logging: *default-logging
 
   frontend:
+    image: night-iris-frontend:${APP_IMAGE_TAG:-local}
     build:
       context: ./frontend
       dockerfile: Dockerfile.prod
