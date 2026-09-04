@@ -182,8 +182,11 @@ class PublicationDraftPublishView(APIView):
     )
     @transaction.atomic
     def post(self, request, draft_id):
+        # Lock only the draft row. Both related FKs are nullable, so joining them
+        # here would make PostgreSQL reject FOR UPDATE on the nullable side of
+        # the LEFT JOIN. Related objects are loaded lazily inside this transaction.
         draft = get_object_or_404(
-            PublicationDraft.objects.select_for_update().select_related("community", "source_publication"),
+            PublicationDraft.objects.select_for_update(),
             public_id=draft_id,
             owner=request.user,
         )
