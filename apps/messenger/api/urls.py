@@ -1,5 +1,10 @@
 from django.urls import path
 
+from apps.messenger.api.schema_views import (
+    GroupMemberCollectionView,
+    GroupMemberDetailView,
+    WSTicketSchemaView,
+)
 from apps.messenger.api.views import (
     ConversationDetailView,
     ConversationDraftView,
@@ -11,7 +16,6 @@ from apps.messenger.api.views import (
     DirectConversationCreateView,
     GroupConversationCreateView,
     GroupMemberRoleView,
-    GroupMemberView,
     MessageDetailView,
     MessageForwardView,
     MessageHistoryView,
@@ -20,7 +24,6 @@ from apps.messenger.api.views import (
     MessengerSettingsView,
     MessengerUnreadCountView,
     MessengerUserSearchView,
-    WSTicketView,
 )
 
 urlpatterns = [
@@ -33,8 +36,8 @@ urlpatterns = [
     path("messenger/conversations/<uuid:conversation_id>/read/", ConversationReadView.as_view(), name="messenger-read"),
     path("messenger/conversations/<uuid:conversation_id>/pinned/", ConversationPinnedMessageView.as_view(), name="messenger-pinned"),
     path("messenger/conversations/<uuid:conversation_id>/shared/", ConversationSharedContentView.as_view(), name="messenger-shared"),
-    path("messenger/conversations/<uuid:conversation_id>/members/", GroupMemberView.as_view(), name="messenger-members"),
-    path("messenger/conversations/<uuid:conversation_id>/members/<uuid:user_id>/", GroupMemberView.as_view(), name="messenger-member-detail"),
+    path("messenger/conversations/<uuid:conversation_id>/members/", GroupMemberCollectionView.as_view(), name="messenger-members"),
+    path("messenger/conversations/<uuid:conversation_id>/members/<uuid:user_id>/", GroupMemberDetailView.as_view(), name="messenger-member-detail"),
     path("messenger/conversations/<uuid:conversation_id>/members/<uuid:user_id>/role/", GroupMemberRoleView.as_view(), name="messenger-member-role"),
     path("messenger/messages/<uuid:message_id>/", MessageDetailView.as_view(), name="messenger-message-detail"),
     path("messenger/messages/<uuid:message_id>/history/", MessageHistoryView.as_view(), name="messenger-message-history"),
@@ -44,5 +47,5 @@ urlpatterns = [
     path("messenger/settings/", MessengerSettingsView.as_view(), name="messenger-settings"),
     path("messenger/unread-count/", MessengerUnreadCountView.as_view(), name="messenger-unread-count"),
     path("messenger/users/", MessengerUserSearchView.as_view(), name="messenger-user-search"),
-    path("messenger/ws-ticket/", WSTicketView.as_view(), name="messenger-ws-ticket"),
+    path("messenger/ws-ticket/", WSTicketSchemaView.as_view(), name="messenger-ws-ticket"),
 ]

@@ -16,6 +16,7 @@ from openapi_enums import (
     MESSENGER_CONVERSATION_KIND_CHOICES,
     MESSENGER_MEMBER_ROLE_CHOICES,
     MESSENGER_MESSAGE_SCALE_CHOICES,
+    MESSENGER_PRIVACY_CHOICES,
     MESSENGER_WALLPAPER_CHOICES,
     MODERATION_ACTION_TARGET_TYPE_CHOICES,
     NOTIFICATION_EVENT_STATUS_CHOICES,
@@ -282,6 +283,7 @@ SPECTACULAR_SETTINGS = {
         "MessengerChatThemeEnum": MESSENGER_CHAT_THEME_CHOICES,
         "MessengerWallpaperEnum": MESSENGER_WALLPAPER_CHOICES,
         "MessengerMessageScaleEnum": MESSENGER_MESSAGE_SCALE_CHOICES,
+        "MessengerPrivacyEnum": MESSENGER_PRIVACY_CHOICES,
     },
     "SWAGGER_UI_SETTINGS": {
         "persistAuthorization": True,
@@ -337,4 +339,3 @@ if SENTRY_DSN:
         traces_sample_rate=float(os.environ.get("SENTRY_TRACES_SAMPLE_RATE", "0.05")),
         send_default_pii=False,
     )
-

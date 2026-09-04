@@ -104,8 +104,6 @@ class ConversationMember(models.Model):
     pinned_at = models.DateTimeField(null=True, blank=True)
     draft_text = models.TextField(blank=True)
     draft_updated_at = models.DateTimeField(null=True, blank=True)
-
-    # Per-user, per-chat appearance. It never changes how the other member sees the chat.
     chat_theme = models.CharField(max_length=16, choices=ChatTheme.choices, default=ChatTheme.IRIS)
     wallpaper = models.CharField(max_length=24, choices=Wallpaper.choices, default=Wallpaper.IRIS_GRID)
     wallpaper_asset = models.ForeignKey(
@@ -129,6 +127,10 @@ class ConversationMember(models.Model):
         indexes = [
             models.Index(fields=["user", "is_archived", "-joined_at"], name="messenger_member_user_idx"),
             models.Index(fields=["conversation", "role"], name="messenger_member_role_idx"),
+            models.Index(
+                fields=["user", "is_archived", "is_pinned", "-pinned_at", "conversation"],
+                name="msg_member_inbox_idx",
+            ),
         ]
 
 
@@ -174,6 +176,10 @@ class Message(models.Model):
         indexes = [
             models.Index(fields=["conversation", "-created_at"], name="messenger_msg_conv_time_idx"),
             models.Index(fields=["sender", "-created_at"], name="messenger_msg_sender_idx"),
+            models.Index(
+                fields=["conversation", "-created_at", "-id"],
+                name="msg_conv_cursor_idx",
+            ),
         ]
 
     @property
@@ -227,8 +233,12 @@ class MessageReceipt(models.Model):
     read_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
-        constraints = [models.UniqueConstraint(fields=["message", "user"], name="messenger_unique_message_receipt")]
-        indexes = [models.Index(fields=["user", "delivered_at", "read_at"], name="messenger_receipt_user_idx")]
+        constraints = [
+            models.UniqueConstraint(fields=["message", "user"], name="messenger_unique_message_receipt")
+        ]
+        indexes = [
+            models.Index(fields=["user", "delivered_at", "read_at"], name="messenger_receipt_user_idx")
+        ]
 
 
 class MessageEdit(models.Model):
@@ -247,13 +257,21 @@ class MessageHiddenForUser(models.Model):
     hidden_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        constraints = [models.UniqueConstraint(fields=["message", "user"], name="messenger_unique_hidden_message")]
+        constraints = [
+            models.UniqueConstraint(fields=["message", "user"], name="messenger_unique_hidden_message")
+        ]
         indexes = [models.Index(fields=["user", "-hidden_at"], name="messenger_hidden_user_idx")]
 
 
 class MessengerEvent(models.Model):
     public_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
-    conversation = models.ForeignKey(Conversation, on_delete=models.CASCADE, related_name="event_log", null=True, blank=True)
+    conversation = models.ForeignKey(
+        Conversation,
+        on_delete=models.CASCADE,
+        related_name="event_log",
+        null=True,
+        blank=True,
+    )
     sequence = models.PositiveBigIntegerField(default=0)
     event_type = models.CharField(max_length=64)
     payload = models.JSONField(default=dict)
@@ -271,7 +289,9 @@ class MessengerEventRecipient(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="messenger_event_edges")
 
     class Meta:
-        constraints = [models.UniqueConstraint(fields=["event", "user"], name="messenger_unique_event_recipient")]
+        constraints = [
+            models.UniqueConstraint(fields=["event", "user"], name="messenger_unique_event_recipient")
+        ]
         indexes = [models.Index(fields=["user", "event"], name="messenger_event_user_idx")]
 
 
@@ -281,7 +301,11 @@ class MessengerSettings(models.Model):
         FOLLOWING = "following", "Following"
         NOBODY = "nobody", "Nobody"
 
-    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="messenger_settings")
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="messenger_settings",
+    )
     browser_notifications = models.BooleanField(default=True)
     notification_sound = models.BooleanField(default=True)
     notification_preview = models.BooleanField(default=True)

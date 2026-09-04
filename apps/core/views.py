@@ -7,7 +7,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.media.storage import get_internal_s3_client
+from apps.media.storage import internal_client
 
 
 LiveResponseSerializer = inline_serializer(
@@ -70,7 +70,7 @@ class ReadyView(APIView):
 
         if settings.READINESS_CHECK_S3:
             try:
-                get_internal_s3_client().head_bucket(Bucket=settings.S3_BUCKET)
+                internal_client().head_bucket(Bucket=settings.S3_BUCKET)
                 checks["object_storage"] = "ok"
             except Exception:
                 checks["object_storage"] = "error"

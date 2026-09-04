@@ -58,12 +58,15 @@ def publication_search_queryset(viewer, *, query: str, publication_type: str = "
             + SearchVector("content_text", weight="B", config="simple")
         )
         search_query = SearchQuery(query, search_type="websearch", config="simple")
+        # Keep the vector as an annotation so PostgreSQL can use the matching
+        # expression GIN index for the @@ lookup. Ranking alone (ts_rank >= x)
+        # does not give the planner an indexable full-text predicate.
         queryset = queryset.annotate(
+            search_vector=vector,
             search_rank=SearchRank(vector, search_query),
         ).filter(
-            Q(search_rank__gte=0.01)
+            Q(search_vector=search_query)
             | Q(title__icontains=query)
-            | Q(content_text__icontains=query)
             | Q(tags__name__icontains=query)
             | Q(tags__slug__icontains=query)
         )
@@ -156,7 +159,9 @@ def tag_search_queryset(query: str):
         )
     )
     if query:
-        queryset = queryset.filter(Q(name__icontains=query) | Q(slug__icontains=query)).annotate(
+        queryset = queryset.filter(
+            Q(name__icontains=query) | Q(slug__icontains=query)
+        ).annotate(
             search_priority=Case(
                 When(slug__iexact=query, then=Value(4)),
                 When(name__iexact=query, then=Value(4)),
@@ -167,7 +172,9 @@ def tag_search_queryset(query: str):
             )
         ).order_by("-search_priority", "-publication_count", "name")
     else:
-        queryset = queryset.filter(publication_count__gt=0).order_by("-publication_count", "name")
+        queryset = queryset.filter(publication_count__gt=0).order_by(
+            "-publication_count", "name"
+        )
     return queryset
 
 
