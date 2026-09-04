@@ -1,0 +1,107 @@
+name: Load Gate
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  api-load-gate:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_DB: forum
+          POSTGRES_USER: forum
+          POSTGRES_PASSWORD: forum
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U forum -d forum"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:8-alpine
+        ports:
+          - 6379:6379
+
+    env:
+      DJANGO_SECRET_KEY: load-gate-secret-key-not-used-outside-ci
+      JWT_SIGNING_KEY: load-gate-jwt-key-not-used-outside-ci
+      DJANGO_DEBUG: "0"
+      DJANGO_ALLOWED_HOSTS: localhost,testserver,127.0.0.1
+      POSTGRES_DB: forum
+      POSTGRES_USER: forum
+      POSTGRES_PASSWORD: forum
+      POSTGRES_HOST: 127.0.0.1
+      POSTGRES_PORT: "5432"
+      REDIS_CACHE_URL: redis://127.0.0.1:6379/1
+      CHANNEL_REDIS_URL: redis://127.0.0.1:6379/2
+      CELERY_BROKER_URL: redis://127.0.0.1:6379/0
+      S3_ACCESS_KEY: load-access
+      S3_SECRET_KEY: load-secret
+      S3_BUCKET: forum-media
+      S3_INTERNAL_ENDPOINT: http://127.0.0.1:9000
+      S3_PUBLIC_ENDPOINT: http://127.0.0.1:9000
+      READINESS_CHECK_S3: "0"
+      API_DOCS_ENABLED: "0"
+      METRICS_ENABLED: "0"
+      DRF_THROTTLE_ANON: 10000/min
+      DRF_THROTTLE_USER: 10000/min
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.13"
+          enable-cache: false
+      - run: uv sync --frozen --no-dev
+      - run: uv run python manage.py migrate --noinput
+      - name: Seed representative publications
+        run: |
+          uv run python manage.py shell <<'PY'
+          from apps.users.models import User
+          from apps.publications.models import Publication
+          from apps.publications.services import create_publication
+          user = User.objects.create_user(nickname="loadgate", email="loadgate@example.test", password="loadgate-password")
+          for i in range(120):
+              create_publication(
+                  author=user,
+                  kind=Publication.Type.ARTICLE,
+                  title=f"Django PostgreSQL load gate {i}",
+                  content=[{"type": "paragraph", "text": "Night Iris representative performance payload"}],
+                  community=None,
+                  tag_names=["load-gate", "django"],
+              )
+          PY
+      - name: Start Django ASGI
+        run: |
+          uv run daphne -b 127.0.0.1 -p 8000 config.asgi:application >/tmp/night-iris-load-backend.log 2>&1 &
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8000/api/v1/live/ >/dev/null; then exit 0; fi
+            sleep 1
+          done
+          cat /tmp/night-iris-load-backend.log
+          exit 1
+      - name: Run latency and error-rate gate
+        run: >-
+          python scripts/load_smoke.py
+          --base-url http://127.0.0.1:8000/api/v1
+          --requests 300
+          --concurrency 20
+          --warmup 30
+          --max-error-rate 0.01
+          --max-p95-ms 1500
+          --max-p99-ms 3000
+          --min-rps 10
+          --output /tmp/night-iris-load-report.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: load-gate-report
+          path: /tmp/night-iris-load-report.json
+          if-no-files-found: warn
