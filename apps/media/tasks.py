@@ -16,6 +16,7 @@ logger = logging.getLogger("nightiris.media")
 class ScanVerdict:
     CLEAN = "clean"
     INFECTED = "infected"
+    REJECTED = "rejected"
 
 
 def _clamav_scan_object(asset):
@@ -52,6 +53,8 @@ def _clamav_scan_object(asset):
         return ScanVerdict.CLEAN, text
     if " FOUND" in text:
         return ScanVerdict.INFECTED, text
+    if "INSTREAM size limit exceeded" in text:
+        return ScanVerdict.REJECTED, text
     raise RuntimeError(f"Unexpected scanner response: {text or '<empty>'}")
 
 
@@ -86,7 +89,7 @@ def scan_media_asset(self, asset_public_id):
         return
 
     verdict, detail = scan_asset(asset)
-    rejected = verdict == ScanVerdict.INFECTED
+    rejected = verdict in {ScanVerdict.INFECTED, ScanVerdict.REJECTED}
     if rejected:
         try:
             delete_object(object_key=asset.object_key)
