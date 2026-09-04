@@ -1,14 +1,14 @@
 from datetime import timedelta
 
 from django.contrib.postgres.search import SearchQuery, SearchRank, SearchVector
-from django.db.models import Case, Count, Exists, IntegerField, OuterRef, Q, Value, When
+from django.db.models import Case, Count, Exists, F, IntegerField, OuterRef, Q, Value, When
 from django.utils import timezone
 
 from apps.communities.models import Community
 from apps.discussions.models import Comment
 from apps.publications.models import Publication, Tag
 from apps.publications.selectors import publication_queryset
-from apps.social.models import CommunitySubscription
+from apps.social.models import CommunitySubscription, PublicationBookmark, UserFollow
 from apps.social.selectors import user_profile_queryset
 
 
@@ -53,14 +53,8 @@ def publication_search_queryset(viewer, *, query: str, publication_type: str = "
         queryset = queryset.filter(has_accepted_answer=(accepted == "yes"))
 
     if query:
-        vector = (
-            SearchVector("title", weight="A", config="simple")
-            + SearchVector("content_text", weight="B", config="simple")
-        )
+        vector = SearchVector("title", weight="A", config="simple") + SearchVector("content_text", weight="B", config="simple")
         search_query = SearchQuery(query, search_type="websearch", config="simple")
-        # Keep the vector as an annotation so PostgreSQL can use the matching
-        # expression GIN index for the @@ lookup. Ranking alone (ts_rank >= x)
-        # does not give the planner an indexable full-text predicate.
         queryset = queryset.annotate(
             search_vector=vector,
             search_rank=SearchRank(vector, search_query),
@@ -119,13 +113,12 @@ def community_search_queryset(viewer, query: str):
                 filter=Q(publications__visibility=Publication.Visibility.PUBLISHED),
                 distinct=True,
             ),
+            staff_count=Count("staff_edges", distinct=True),
         )
     )
     if viewer is not None and viewer.is_authenticated:
         queryset = queryset.annotate(
-            is_subscribed=Exists(
-                CommunitySubscription.objects.filter(user=viewer, community_id=OuterRef("pk"))
-            )
+            is_subscribed=Exists(CommunitySubscription.objects.filter(user=viewer, community_id=OuterRef("pk")))
         )
     else:
         queryset = queryset.annotate(is_subscribed=Value(False))
@@ -172,9 +165,7 @@ def tag_search_queryset(query: str):
             )
         ).order_by("-search_priority", "-publication_count", "name")
     else:
-        queryset = queryset.filter(publication_count__gt=0).order_by(
-            "-publication_count", "name"
-        )
+        queryset = queryset.filter(publication_count__gt=0).order_by("-publication_count", "name")
     return queryset
 
 
@@ -191,3 +182,61 @@ def open_topics_queryset(viewer):
         .filter(has_accepted_answer=False)
         .order_by("-created_at")
     )
+
+
+def _interest_tag_ids(viewer):
+    if viewer is None or not viewer.is_authenticated:
+        return []
+    return list(
+        Tag.objects.filter(
+            Q(publications__author=viewer)
+            | Q(publications__bookmark_edges__user=viewer)
+            | Q(publications__community__subscriptions__user=viewer)
+        )
+        .annotate(weight=Count("publications", distinct=True))
+        .order_by("-weight", "id")
+        .values_list("id", flat=True)
+        .distinct()[:40]
+    )
+
+
+def recommended_publications_queryset(viewer):
+    """Rank recommendations with simple, inspectable product signals.
+
+    We deliberately avoid opaque recommendation infrastructure for 0.9. A followed
+    author is worth 6 points, a subscribed community 5, and every matching interest
+    tag 2. Freshness breaks ties. Cold-start and anonymous users get fresh content.
+    """
+    queryset = publication_queryset(viewer, hide_muted=True)
+    if viewer is None or not viewer.is_authenticated:
+        return queryset.order_by("-created_at")
+
+    interest_tag_ids = _interest_tag_ids(viewer)
+    queryset = queryset.exclude(author=viewer).annotate(
+        recommended_followed_author=Exists(
+            UserFollow.objects.filter(follower=viewer, following_id=OuterRef("author_id"))
+        ),
+        recommended_subscribed_community=Exists(
+            CommunitySubscription.objects.filter(user=viewer, community_id=OuterRef("community_id"))
+        ),
+        recommended_matching_tags=Count(
+            "tags",
+            filter=Q(tags__id__in=interest_tag_ids) if interest_tag_ids else Q(pk__isnull=True),
+            distinct=True,
+        ),
+    ).annotate(
+        recommendation_score=(
+            Case(
+                When(recommended_followed_author=True, then=Value(6)),
+                default=Value(0),
+                output_field=IntegerField(),
+            )
+            + Case(
+                When(recommended_subscribed_community=True, then=Value(5)),
+                default=Value(0),
+                output_field=IntegerField(),
+            )
+            + F("recommended_matching_tags") * Value(2)
+        )
+    )
+    return queryset.order_by("-recommendation_score", "-created_at")

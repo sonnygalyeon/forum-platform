@@ -12,6 +12,7 @@ from apps.discovery.selectors import (
     community_search_queryset,
     open_topics_queryset,
     publication_search_queryset,
+    recommended_publications_queryset,
     tag_search_queryset,
     user_search_queryset,
 )
@@ -77,27 +78,28 @@ class SearchView(APIView):
         community_items = communities[:section_limit] if scope in {"all", "communities"} else []
         tag_items = tags[:12 if all_scope else 40] if scope in {"all", "tags"} else []
 
-        payload = {
-            "query": query,
-            "scope": scope,
-            "counts": counts,
-            "publications": PublicationListSerializer(publication_items, many=True, context={"request": request}).data,
-            "users": UserProfileSerializer(user_items, many=True, context={"request": request}).data,
-            "communities": CommunitySerializer(community_items, many=True, context={"request": request}).data,
-            "tags": SearchTagSerializer(
-                [
-                    {
-                        "id": tag.public_id,
-                        "name": tag.name,
-                        "slug": tag.slug,
-                        "publication_count": tag.publication_count,
-                    }
-                    for tag in tag_items
-                ],
-                many=True,
-            ).data,
-        }
-        return Response(payload)
+        return Response(
+            {
+                "query": query,
+                "scope": scope,
+                "counts": counts,
+                "publications": PublicationListSerializer(publication_items, many=True, context={"request": request}).data,
+                "users": UserProfileSerializer(user_items, many=True, context={"request": request}).data,
+                "communities": CommunitySerializer(community_items, many=True, context={"request": request}).data,
+                "tags": SearchTagSerializer(
+                    [
+                        {
+                            "id": item.public_id,
+                            "name": item.name,
+                            "slug": item.slug,
+                            "publication_count": item.publication_count,
+                        }
+                        for item in tag_items
+                    ],
+                    many=True,
+                ).data,
+            }
+        )
 
 
 class DiscoveryView(APIView):
@@ -109,17 +111,24 @@ class DiscoveryView(APIView):
         communities = community_search_queryset(request.user, "")[:8]
         open_topics = open_topics_queryset(request.user)[:8]
         users = user_search_queryset(request.user, "")[:8]
+        recommendations = recommended_publications_queryset(request.user)[:12]
         return Response(
             {
+                "personalized": bool(request.user.is_authenticated),
+                "recommended_publications": PublicationListSerializer(
+                    recommendations,
+                    many=True,
+                    context={"request": request},
+                ).data,
                 "popular_tags": SearchTagSerializer(
                     [
                         {
-                            "id": tag.public_id,
-                            "name": tag.name,
-                            "slug": tag.slug,
-                            "publication_count": tag.publication_count,
+                            "id": item.public_id,
+                            "name": item.name,
+                            "slug": item.slug,
+                            "publication_count": item.publication_count,
                         }
-                        for tag in tags
+                        for item in tags
                     ],
                     many=True,
                 ).data,

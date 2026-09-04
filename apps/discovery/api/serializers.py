@@ -30,6 +30,8 @@ class SearchResponseSerializer(serializers.Serializer):
 
 
 class DiscoveryResponseSerializer(serializers.Serializer):
+    personalized = serializers.BooleanField()
+    recommended_publications = PublicationListSerializer(many=True)
     popular_tags = SearchTagSerializer(many=True)
     active_communities = CommunitySerializer(many=True)
     open_topics = PublicationListSerializer(many=True)
