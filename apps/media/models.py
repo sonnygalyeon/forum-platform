@@ -18,11 +18,7 @@ class MediaAsset(models.Model):
         REJECTED = "rejected", "Rejected"
 
     public_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
-    owner = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.PROTECT,
-        related_name="media_assets",
-    )
+    owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="media_assets")
     original_name = models.CharField(max_length=255)
     declared_content_type = models.CharField(max_length=255, default="application/octet-stream")
     kind = models.CharField(max_length=16, choices=Kind.choices, default=Kind.FILE)
@@ -34,6 +30,8 @@ class MediaAsset(models.Model):
     status = models.CharField(max_length=24, choices=Status.choices, default=Status.UPLOADING)
     created_at = models.DateTimeField(auto_now_add=True)
     completed_at = models.DateTimeField(null=True, blank=True)
+    scan_checked_at = models.DateTimeField(null=True, blank=True)
+    scan_detail = models.CharField(max_length=1000, blank=True)
 
     class Meta:
         indexes = [
@@ -52,33 +50,15 @@ class PublicationMedia(models.Model):
         ATTACHMENT = "attachment", "Attachment"
         INLINE = "inline", "Inline"
 
-    publication = models.ForeignKey(
-        "publications.Publication",
-        on_delete=models.CASCADE,
-        related_name="media_links",
-    )
-    asset = models.ForeignKey(
-        MediaAsset,
-        on_delete=models.PROTECT,
-        related_name="publication_links",
-    )
+    publication = models.ForeignKey("publications.Publication", on_delete=models.CASCADE, related_name="media_links")
+    asset = models.ForeignKey(MediaAsset, on_delete=models.PROTECT, related_name="publication_links")
     role = models.CharField(max_length=24, choices=Role.choices)
     sort_order = models.PositiveSmallIntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        constraints = [
-            models.UniqueConstraint(
-                fields=["publication", "asset", "role"],
-                name="media_unique_publication_asset_role",
-            ),
-        ]
-        indexes = [
-            models.Index(
-                fields=["publication", "role", "sort_order"],
-                name="media_publication_role_idx",
-            ),
-        ]
+        constraints = [models.UniqueConstraint(fields=["publication", "asset", "role"], name="media_unique_publication_asset_role")]
+        indexes = [models.Index(fields=["publication", "role", "sort_order"], name="media_publication_role_idx")]
 
     def __str__(self):
         return f"{self.publication_id}:{self.role}:{self.asset_id}"
