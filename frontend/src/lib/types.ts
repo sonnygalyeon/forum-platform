@@ -78,6 +78,7 @@ export type User = {
 
 export type Tag = { id: string; name: string; slug: string };
 export type CommunityCompact = { id: string; slug: string; name: string };
+export type CommunityRole = "owner" | "moderator" | "editor" | "subscriber" | null;
 export type Community = CommunityCompact & {
   description: string;
   owner: User;
@@ -85,6 +86,10 @@ export type Community = CommunityCompact & {
   publication_count: number;
   is_subscribed: boolean;
   created_at: string;
+  my_role?: CommunityRole;
+  can_manage?: boolean;
+  can_moderate?: boolean;
+  staff_count?: number;
 };
 
 export type ContentBlock =
@@ -94,7 +99,8 @@ export type ContentBlock =
   | { type: "code"; code: string; language?: string }
   | { type: "image"; asset_id: string; caption?: string }
   | { type: "video"; asset_id: string; caption?: string }
-  | { type: "attachment"; asset_id: string; caption?: string };
+  | { type: "attachment"; asset_id: string; caption?: string }
+  | { type: "embed"; url: string; title?: string; description?: string };
 
 export type PublicationMedia = {
   asset_id: string;
@@ -125,6 +131,36 @@ export type Publication = {
   media?: PublicationMedia[];
   can_edit?: boolean;
   can_interact?: boolean;
+  is_bookmarked?: boolean;
+};
+
+export type PublicationDraft = {
+  id: string;
+  type: "post" | "article" | "topic";
+  title: string;
+  content: ContentBlock[];
+  tags: string[];
+  community: CommunityCompact | null;
+  source_publication: { id: string; type: "post" | "article" | "topic"; title: string } | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type PublicationRevision = {
+  revision: number;
+  title: string;
+  edited_by: User;
+  created_at: string;
+  content?: ContentBlock[];
+  tags_snapshot?: Array<{ name: string; slug: string }>;
+  media_snapshot?: Array<{
+    asset_id: string;
+    role: string;
+    sort_order: number;
+    name: string;
+    kind: "image" | "video" | "file";
+    size_bytes: number;
+  }>;
 };
 
 export type CommentBlock =
@@ -184,7 +220,6 @@ export type CursorPage<T> = {
   results: T[];
 };
 
-
 export type SearchScope = "all" | "publications" | "users" | "communities" | "tags";
 export type SearchTag = { id: string; name: string; slug: string; publication_count: number };
 export type SearchResponse = {
@@ -201,6 +236,7 @@ export type DiscoveryResponse = {
   active_communities: Community[];
   open_topics: Publication[];
   top_users: User[];
+  recommended_publications?: Publication[];
 };
 
 export type AdminPage<T> = { count: number; next: string | null; previous: string | null; results: T[] };
@@ -219,7 +255,6 @@ export type AdminComment = { id:string; publication:{id:string;title:string;type
 export type AdminCommunity = { id:string; slug:string; name:string; description:string; owner:User; is_active:boolean; subscriber_count:number; publication_count:number; created_at:string; updated_at:string };
 export type AdminReport = { id:string; reporter:User; target_type:"publication"|"comment"|"user"; target_id:string|null; target_label:string; reason:string; details:string; status:"open"|"reviewing"|"resolved"|"dismissed"; moderator:User|null; resolution_note:string; created_at:string; updated_at:string; resolved_at:string|null };
 export type AdminModerationAction = { id:string; actor:User; target_type:string; target_id:string|null; target_label:string; action:string; reason:string; report_id:string|null; created_at:string };
-
 
 export type MessengerActivityState =
   | "typing"

@@ -9,10 +9,21 @@ import { clientApi } from "@/lib/client-api";
 import type { Publication } from "@/lib/types";
 
 export default function EditPublicationPage() {
-  const params = useParams<{id:string}>(); const router = useRouter();
+  const params = useParams<{id:string}>();
+  const router = useRouter();
   const query = useQuery({ queryKey:["publication",params.id], queryFn:()=>clientApi<Publication>(`/publications/${params.id}/`) });
   if (query.isLoading) return <AppShell><LoadingBlock/></AppShell>;
   if (!query.data || !query.data.can_edit) return <AppShell><div className="error-panel">Редактирование этой публикации недоступно.</div></AppShell>;
-  const p = query.data;
-  return <AppShell><section className="page-head"><div><div className="eyebrow">РЕДАКТИРОВАНИЕ / REVISION {p.revision}</div><h1>{p.title || "Редактирование поста"}</h1><p>После сохранения backend создаст новую неизменяемую ревизию.</p></div></section><PublicationEditorForm mode="edit" initial={{id:p.id,type:p.type,title:p.title,tags:p.tags.map(t=>t.name).join(", "),communityId:p.community?.id??"",blocks:p.content??[]}} onSaved={(publication)=>router.push(`/publications/${publication.id}`)}/></AppShell>;
+  const publication = query.data;
+  return (
+    <AppShell>
+      <section className="page-head"><div><div className="eyebrow">РЕДАКТИРОВАНИЕ / REVISION {publication.revision}</div><h1>{publication.title || "Редактирование поста"}</h1><p>Изменения автоматически уходят в серверный черновик. При публикации создаётся новая неизменяемая ревизия.</p></div></section>
+      <PublicationEditorForm
+        mode="edit"
+        initial={{id:publication.id,type:publication.type,title:publication.title,tags:publication.tags.map((tag)=>tag.name).join(", "),communityId:publication.community?.id??"",blocks:publication.content??[]}}
+        initialMedia={publication.media ?? []}
+        onSaved={(saved)=>router.push(`/publications/${saved.id}`)}
+      />
+    </AppShell>
+  );
 }

@@ -7,6 +7,7 @@ import {
   FileUp,
   Heading2,
   ImagePlus,
+  Link2,
   LoaderCircle,
   MessageSquareQuote,
   Plus,
@@ -128,6 +129,15 @@ export function BlockEditor({
                   <input value={block.language ?? ""} onChange={(e) => patch(index, { ...block, language: e.target.value })} placeholder="Язык: rust, python, ts…" />
                   <textarea rows={8} spellCheck={false} value={block.code} onChange={(e) => patch(index, { ...block, code: e.target.value })} placeholder="Код…" />
                 </div>
+              ) : block.type === "embed" ? (
+                <div className="embed-editor-block">
+                  <div className="media-editor-icon"><Link2/></div>
+                  <div className="embed-editor-fields">
+                    <input type="url" value={block.url} onChange={(e) => patch(index, { ...block, url: e.target.value })} placeholder="https://example.com/reference" />
+                    <input value={block.title ?? ""} onChange={(e) => patch(index, { ...block, title: e.target.value })} placeholder="Название ссылки (необязательно)" />
+                    <textarea rows={2} value={block.description ?? ""} onChange={(e) => patch(index, { ...block, description: e.target.value })} placeholder="Краткое описание (необязательно)" />
+                  </div>
+                </div>
               ) : (
                 <div className="media-editor-block">
                   <div className="media-editor-icon">{block.type === "image" ? <ImagePlus/> : block.type === "video" ? <Video/> : <FileUp/>}</div>
@@ -150,6 +160,7 @@ export function BlockEditor({
         <button type="button" onClick={() => add({ type: "heading", level: 2, text: "" })}><Heading2 size={15}/> Заголовок</button>
         <button type="button" onClick={() => add({ type: "quote", text: "" })}><MessageSquareQuote size={15}/> Цитата</button>
         <button type="button" onClick={() => add({ type: "code", code: "", language: "" })}><Code2 size={15}/> Код</button>
+        <button type="button" onClick={() => add({ type: "embed", url: "", title: "", description: "" })}><Link2 size={15}/> Ссылка</button>
         <button type="button" onClick={() => requestUpload("image")}><ImagePlus size={15}/> Фото</button>
         <button type="button" onClick={() => requestUpload("video")}><Video size={15}/> Видео</button>
         <button type="button" onClick={() => requestUpload("attachment")}><FileUp size={15}/> Файл</button>
@@ -163,6 +174,7 @@ export function normalizeBlocks(blocks: ContentBlock[]) {
   return blocks.filter((block) => {
     if (block.type === "paragraph" || block.type === "quote" || block.type === "heading") return block.text.trim().length > 0;
     if (block.type === "code") return block.code.trim().length > 0;
+    if (block.type === "embed") return block.url.trim().length > 0;
     return Boolean(block.asset_id);
   });
 }

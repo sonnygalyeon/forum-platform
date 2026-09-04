@@ -13,6 +13,7 @@ import {
 
 const ALLOWED_ROOTS = new Set([
   "publications",
+  "publication-drafts",
   "feed",
   "communities",
   "notifications",
@@ -40,40 +41,23 @@ async function proxy(
   const requestId = requestIdFor(request);
   const { path } = await context.params;
 
-  if (
-    !path.length ||
-    !ALLOWED_ROOTS.has(path[0])
-  ) {
+  if (!path.length || !ALLOWED_ROOTS.has(path[0])) {
     return NextResponse.json(
-      {
-        detail:
-          "Endpoint is not exposed by the frontend proxy.",
-      },
-      {
-        status: 404,
-        headers: {
-          "X-Request-ID": requestId,
-        },
-      },
+      { detail: "Endpoint is not exposed by the frontend proxy." },
+      { status: 404, headers: { "X-Request-ID": requestId } },
     );
   }
 
   try {
     const incomingUrl = new URL(request.url);
     const djangoPath = `${path.join("/")}/${incomingUrl.search}`;
-    const body = ["GET", "HEAD"].includes(
-      request.method,
-    )
+    const body = ["GET", "HEAD"].includes(request.method)
       ? undefined
       : await request.arrayBuffer();
 
     const headers = new Headers();
-    const contentType = request.headers.get(
-      "content-type",
-    );
-    if (contentType) {
-      headers.set("Content-Type", contentType);
-    }
+    const contentType = request.headers.get("content-type");
+    if (contentType) headers.set("Content-Type", contentType);
 
     const { access, refresh } = await currentTokens();
     let currentAccess = access;
@@ -81,74 +65,41 @@ async function proxy(
 
     let upstream = await djangoFetch(
       djangoPath,
-      {
-        method: request.method,
-        headers,
-        body,
-      },
+      { method: request.method, headers, body },
       currentAccess,
       requestId,
     );
 
     if (upstream.status === 401 && refresh) {
-      const rotated = await refreshAccess(
-        refresh,
-        requestId,
-      );
-
+      const rotated = await refreshAccess(refresh, requestId);
       if (rotated) {
         currentAccess = rotated.access;
         rotatedRefresh = rotated.refresh;
         upstream = await djangoFetch(
           djangoPath,
-          {
-            method: request.method,
-            headers,
-            body,
-          },
+          { method: request.method, headers, body },
           currentAccess,
           requestId,
         );
       }
     }
 
-    const responseBody =
-      upstream.status === 204
-        ? null
-        : await upstream.arrayBuffer();
-
-    const responseRequestId =
-      upstream.headers.get("x-request-id") ?? requestId;
-
-    const response = new NextResponse(
-      responseBody,
-      {
-        status: upstream.status,
-        headers: {
-          "Content-Type":
-            upstream.headers.get("content-type") ??
-            "application/json",
-          "X-Request-ID": responseRequestId,
-        },
+    const responseBody = upstream.status === 204 ? null : await upstream.arrayBuffer();
+    const responseRequestId = upstream.headers.get("x-request-id") ?? requestId;
+    const response = new NextResponse(responseBody, {
+      status: upstream.status,
+      headers: {
+        "Content-Type": upstream.headers.get("content-type") ?? "application/json",
+        "X-Request-ID": responseRequestId,
       },
-    );
+    });
 
     if (currentAccess && rotatedRefresh) {
-      setAuthCookies(
-        response,
-        currentAccess,
-        rotatedRefresh,
-      );
+      setAuthCookies(response, currentAccess, rotatedRefresh);
     }
-
-    if (
-      upstream.status === 401 &&
-      refresh &&
-      !rotatedRefresh
-    ) {
+    if (upstream.status === 401 && refresh && !rotatedRefresh) {
       clearAuthCookies(response);
     }
-
     return response;
   } catch (error) {
     if (error instanceof BackendUnavailableError) {

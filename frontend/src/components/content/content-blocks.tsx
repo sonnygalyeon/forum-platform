@@ -1,4 +1,4 @@
-import { Download, FileText } from "lucide-react";
+import { Download, ExternalLink, FileText } from "lucide-react";
 import type { ContentBlock, PublicationMedia } from "@/lib/types";
 
 function humanBytes(bytes: number) {
@@ -11,6 +11,14 @@ function humanBytes(bytes: number) {
     index += 1;
   }
   return `${value.toFixed(value >= 10 ? 1 : 2)} ${units[index]}`;
+}
+
+function hostnameFor(url: string) {
+  try {
+    return new URL(url).hostname;
+  } catch {
+    return url;
+  }
 }
 
 export function ContentBlocks({ blocks, media = [] }: { blocks?: ContentBlock[]; media?: PublicationMedia[] }) {
@@ -27,6 +35,19 @@ export function ContentBlocks({ blocks, media = [] }: { blocks?: ContentBlock[];
           return <Tag key={index}>{block.text}</Tag>;
         }
         if (block.type === "code") return <pre className="code-block" key={index}><div className="code-language">{block.language || "code"}</div><code>{block.code}</code></pre>;
+        if (block.type === "embed") {
+          return (
+            <a className="embed-card" key={index} href={block.url} target="_blank" rel="noreferrer noopener">
+              <span className="embed-card-icon"><ExternalLink size={19}/></span>
+              <span className="embed-card-copy">
+                <strong>{block.title?.trim() || hostnameFor(block.url)}</strong>
+                {block.description?.trim() ? <span>{block.description}</span> : null}
+                <small>{hostnameFor(block.url)}</small>
+              </span>
+              <ExternalLink size={15}/>
+            </a>
+          );
+        }
 
         const asset = mediaById.get(block.asset_id);
         if (block.type === "image") {
