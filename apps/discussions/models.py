@@ -18,11 +18,7 @@ class Comment(models.Model):
         PUBLISHED = "published", "Published"
         HIDDEN = "hidden", "Hidden"
 
-    public_id = models.UUIDField(
-        default=uuid.uuid4,
-        unique=True,
-        editable=False,
-    )
+    public_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
     publication = models.ForeignKey(
         Publication,
         on_delete=models.PROTECT,
@@ -40,17 +36,9 @@ class Comment(models.Model):
         blank=True,
         related_name="replies",
     )
-    kind = models.CharField(
-        max_length=16,
-        choices=Kind.choices,
-    )
-    content = models.JSONField(
-        validators=[validate_comment_content],
-    )
-    content_text = models.TextField(
-        blank=True,
-        editable=False,
-    )
+    kind = models.CharField(max_length=16, choices=Kind.choices)
+    content = models.JSONField(validators=[validate_comment_content])
+    content_text = models.TextField(blank=True, editable=False)
     depth = models.PositiveSmallIntegerField(default=0)
     visibility = models.CharField(
         max_length=16,
@@ -58,15 +46,8 @@ class Comment(models.Model):
         default=Visibility.PUBLISHED,
     )
     current_revision = models.PositiveIntegerField(default=1)
-
-    # Denormalized score for fast list/feed reads. CommentVote remains the
-    # authoritative per-user vote state.
     score = models.IntegerField(default=0)
-
-    # Used by stage 5.3. Kept here so the public comment representation is
-    # stable across 5.1 -> 5.3.
     is_accepted = models.BooleanField(default=False)
-
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -75,10 +56,7 @@ class Comment(models.Model):
         constraints = [
             models.CheckConstraint(
                 condition=(
-                    (
-                        Q(kind__in=["answer", "comment"])
-                        & Q(parent__isnull=True)
-                    )
+                    (Q(kind__in=["answer", "comment"]) & Q(parent__isnull=True))
                     | (Q(kind="reply") & Q(parent__isnull=False))
                 ),
                 name="discussion_valid_parent_kind",
@@ -94,10 +72,7 @@ class Comment(models.Model):
                 name="discussion_one_accepted_answer",
             ),
             models.CheckConstraint(
-                condition=(
-                    Q(is_accepted=False)
-                    | Q(kind="answer")
-                ),
+                condition=(Q(is_accepted=False) | Q(kind="answer")),
                 name="discussion_accepted_only_answer",
             ),
         ]
@@ -105,6 +80,14 @@ class Comment(models.Model):
             models.Index(fields=["publication", "kind", "-created_at"]),
             models.Index(fields=["parent", "-created_at"]),
             models.Index(fields=["author", "-created_at"]),
+            models.Index(
+                fields=["publication", "visibility", "kind", "-created_at", "-id"],
+                name="disc_pub_feed_idx",
+            ),
+            models.Index(
+                fields=["parent", "visibility", "-created_at", "-id"],
+                name="disc_reply_feed_idx",
+            ),
         ]
 
     def __str__(self):
@@ -154,9 +137,7 @@ class CommentVote(models.Model):
         on_delete=models.CASCADE,
         related_name="comment_votes",
     )
-    value = models.SmallIntegerField(
-        choices=Value.choices,
-    )
+    value = models.SmallIntegerField(choices=Value.choices)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
