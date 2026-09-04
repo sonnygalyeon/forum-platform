@@ -87,7 +87,27 @@ if grep -Eq '^METRICS_ENABLED=1$' "$ENV_FILE"; then
   require_len METRICS_TOKEN 32
 fi
 
-if grep -Eq '^MEDIA_REQUIRE_SCAN=0$' "$ENV_FILE"; then
+if grep -Eq '^MEDIA_REQUIRE_SCAN=1$' "$ENV_FILE"; then
+  SCANNER_BACKEND="$(value MEDIA_SCANNER_BACKEND)"
+  SCANNER_HOST="$(value MEDIA_SCANNER_HOST)"
+  SCANNER_PORT="$(value MEDIA_SCANNER_PORT)"
+  SCANNER_TIMEOUT="$(value MEDIA_SCANNER_TIMEOUT_SECONDS)"
+
+  [ "$SCANNER_BACKEND" = "clamav" ] || {
+    echo "ERROR: MEDIA_SCANNER_BACKEND must be clamav when media scanning is enabled." >&2
+    exit 1
+  }
+  [ -n "$SCANNER_HOST" ] || {
+    echo "ERROR: MEDIA_SCANNER_HOST is required when MEDIA_REQUIRE_SCAN=1." >&2
+    exit 1
+  }
+  case "$SCANNER_PORT" in
+    ''|*[!0-9]*) echo "ERROR: MEDIA_SCANNER_PORT must be an integer." >&2; exit 1 ;;
+  esac
+  case "$SCANNER_TIMEOUT" in
+    ''|*[!0-9]*) echo "ERROR: MEDIA_SCANNER_TIMEOUT_SECONDS must be an integer." >&2; exit 1 ;;
+  esac
+else
   echo "WARNING: media malware scanning is not enabled; uploaded files must be treated as untrusted."
 fi
 
