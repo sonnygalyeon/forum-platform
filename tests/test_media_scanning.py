@@ -1,4 +1,5 @@
 from unittest.mock import patch
+import uuid
 
 import pytest
 
@@ -7,13 +8,15 @@ from apps.media.tasks import ScanVerdict, recover_pending_media_scans, scan_medi
 
 
 def _asset(user, *, status=MediaAsset.Status.PENDING_SCAN):
+    asset_id = uuid.uuid4()
     return MediaAsset.objects.create(
+        public_id=asset_id,
         owner=user,
         original_name="scan.bin",
         declared_content_type="application/octet-stream",
         kind=MediaAsset.Kind.FILE,
         size_bytes=128,
-        object_key=f"uploads/{user.public_id}/scan.bin",
+        object_key=f"uploads/{user.public_id}/{asset_id}.bin",
         upload_id="",
         part_size=5 * 1024 * 1024,
         part_count=1,
