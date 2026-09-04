@@ -9,6 +9,7 @@ import type { Comment, CommentBlock, CursorPage } from "@/lib/types";
 import { useAuth } from "@/providers/auth-provider";
 import { UserAvatar } from "@/components/profile/user-avatar";
 import { CommentComposer } from "@/components/discussion/comment-composer";
+import { ReportButton } from "@/components/trust/report-button";
 
 export function CommentItem({ comment, publicationId }: { comment: Comment; publicationId: string }) {
   const { user } = useAuth();
@@ -36,6 +37,7 @@ export function CommentItem({ comment, publicationId }: { comment: Comment; publ
           {user ? <button onClick={() => setShowReplies(true)}><Reply size={14}/>Ответить</button> : null}
           {comment.can_accept ? <button onClick={() => acceptance.mutate("PUT")}><Check size={14}/>Принять ответ</button> : null}
           {comment.can_unaccept ? <button onClick={() => acceptance.mutate("DELETE")}>Снять принятие</button> : null}
+          {user && user.id !== comment.author.id ? <ReportButton targetType="comment" targetId={comment.id} compact/> : null}
         </div>
         {showReplies ? <div className="reply-zone">{replies.data?.results.map(item => <CommentItem key={item.id} comment={item} publicationId={publicationId}/>)}{user ? <CommentComposer compact placeholder={`Ответить @${comment.author.nickname}…`} busy={replyMutation.isPending} onSubmit={async blocks => { await replyMutation.mutateAsync(blocks); }}/> : null}{replyMutation.isError ? <div className="form-error">{errorMessage(replyMutation.error)}</div> : null}</div> : null}
       </div>

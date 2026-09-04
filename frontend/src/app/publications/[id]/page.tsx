@@ -9,6 +9,7 @@ import { ContentBlocks } from "@/components/content/content-blocks";
 import { CommentItem } from "@/components/discussion/comment-item";
 import { CommentComposer } from "@/components/discussion/comment-composer";
 import { UserAvatar } from "@/components/profile/user-avatar";
+import { ReportButton } from "@/components/trust/report-button";
 import { LoadingBlock } from "@/components/ui/loading";
 import { clientApi, errorMessage } from "@/lib/client-api";
 import type { Comment, CommentBlock, CursorPage, Publication } from "@/lib/types";
@@ -41,7 +42,7 @@ export default function PublicationPage() {
   const p = publication.data;
   return <AppShell>
     <article className="publication-detail">
-      <div className="publication-author-line"><Link href={`/users/${p.author.id}`} className="author-link"><UserAvatar user={p.author} size="sm"/><span><strong>@{p.author.nickname}</strong><small>{new Date(p.created_at).toLocaleString("ru-RU")}{p.is_edited?` · изменено · rev.${p.revision}`:""}</small></span></Link><div className="publication-tools">{user?<button type="button" className="secondary-button compact-button" disabled={toggleBookmark.isPending} onClick={()=>toggleBookmark.mutate()}>{bookmark.data?.bookmarked?<BookmarkCheck size={14}/>:<Bookmark size={14}/>} {bookmark.data?.bookmarked?"Сохранено":"Сохранить"}</button>:null}{p.can_edit?<Link href={`/publications/${p.id}/edit`} className="secondary-button compact-button"><Edit3 size={14}/> Редактировать</Link>:null}<Link href={`/publications/${p.id}/revisions`} className="icon-button" aria-label="История"><History size={16}/></Link></div></div>
+      <div className="publication-author-line"><Link href={`/users/${p.author.id}`} className="author-link"><UserAvatar user={p.author} size="sm"/><span><strong>@{p.author.nickname}</strong><small>{new Date(p.created_at).toLocaleString("ru-RU")}{p.is_edited?` · изменено · rev.${p.revision}`:""}</small></span></Link><div className="publication-tools">{user?<button type="button" className="secondary-button compact-button" disabled={toggleBookmark.isPending} onClick={()=>toggleBookmark.mutate()}>{bookmark.data?.bookmarked?<BookmarkCheck size={14}/>:<Bookmark size={14}/>} {bookmark.data?.bookmarked?"Сохранено":"Сохранить"}</button>:null}{p.can_edit?<Link href={`/publications/${p.id}/edit`} className="secondary-button compact-button"><Edit3 size={14}/> Редактировать</Link>:null}{!p.can_edit ? <ReportButton targetType="publication" targetId={p.id}/> : null}<Link href={`/publications/${p.id}/revisions`} className="icon-button" aria-label="История"><History size={16}/></Link></div></div>
       <div className="meta-row"><span className="status-chip">{p.type === "topic" ? "Вопрос" : p.type === "article" ? "Статья" : "Пост"}</span>{p.community?<Link href={`/communities/${p.community.id}`}>/{p.community.slug}</Link>:null}</div>
       {p.title?<h1>{p.title}</h1>:null}
       <div className="tags">{p.tags.map(t=><span className="tag" key={t.id}>{t.name}</span>)}</div>

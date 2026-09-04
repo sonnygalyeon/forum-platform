@@ -53,7 +53,7 @@ export default function CommunityPage() {
           <div className="community-owner"><UserAvatar user={current.owner} size="xs"/><span>создано <Link href={`/users/${current.owner.id}`}>@{current.owner.nickname}</Link> · {current.subscriber_count} подписчиков · {current.publication_count} публикаций</span></div>
           {current.my_role ? <div className="community-role-chip"><ShieldCheck size={13}/>{roleLabels[current.my_role] ?? current.my_role}</div> : null}
         </div>
-        {user?<div className="community-hero-actions"><button className={current.is_subscribed?"secondary-button":"primary-button"} onClick={()=>subscription.mutate(current.is_subscribed?"DELETE":"PUT")}>{current.is_subscribed?<><BellMinus size={15}/>Отписаться</>:<><BellPlus size={15}/>Подписаться</>}</button><Link href="/new" className="secondary-button"><PenSquare size={15}/>Написать</Link></div>:null}
+        {user?<div className="community-hero-actions">{current.can_moderate?<Link href={`/communities/${current.id}/moderation`} className="secondary-button"><ShieldCheck size={15}/>Модерация</Link>:null}<button className={current.is_subscribed?"secondary-button":"primary-button"} onClick={()=>subscription.mutate(current.is_subscribed?"DELETE":"PUT")}>{current.is_subscribed?<><BellMinus size={15}/>Отписаться</>:<><BellPlus size={15}/>Подписаться</>}</button><Link href="/new" className="secondary-button"><PenSquare size={15}/>Написать</Link></div>:null}
       </section>
 
       {current.can_edit ? <CommunitySettingsPanel community={current}/> : null}
