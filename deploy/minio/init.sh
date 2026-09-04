@@ -1,4 +1,3 @@
-
 #!/bin/sh
 set -eu
 
@@ -22,11 +21,25 @@ cat >/tmp/night-iris-app-policy.json <<EOF
   "Statement": [
     {
       "Effect": "Allow",
-      "Action": ["s3:*"],
-      "Resource": [
-        "arn:aws:s3:::$S3_BUCKET",
-        "arn:aws:s3:::$S3_BUCKET/*"
-      ]
+      "Action": [
+        "s3:GetBucketLocation",
+        "s3:ListBucket",
+        "s3:ListBucketMultipartUploads",
+        "s3:GetBucketCORS",
+        "s3:PutBucketCORS"
+      ],
+      "Resource": ["arn:aws:s3:::$S3_BUCKET"]
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetObject",
+        "s3:PutObject",
+        "s3:DeleteObject",
+        "s3:AbortMultipartUpload",
+        "s3:ListMultipartUploadParts"
+      ],
+      "Resource": ["arn:aws:s3:::$S3_BUCKET/*"]
     }
   ]
 }
@@ -56,4 +69,4 @@ mc admin policy attach \
   --user "$S3_ACCESS_KEY" \
   >/dev/null
 
-echo "Night Iris MinIO bucket and application user are ready."
+echo "Night Iris MinIO bucket and least-privilege application user are ready."

@@ -1,4 +1,3 @@
-
 #!/bin/sh
 set -eu
 
@@ -32,8 +31,23 @@ if grep -Eq 'example\.com|replace-with|change-me' "$ENV_FILE"; then
   exit 1
 fi
 
-if grep -Eq '^DJANGO_DEBUG=1$' "$ENV_FILE"; then
-  echo "ERROR: DJANGO_DEBUG must be 0 in production." >&2
+if ! grep -Eq '^DJANGO_DEBUG=0$' "$ENV_FILE"; then
+  echo "ERROR: DJANGO_DEBUG must explicitly be 0 in production." >&2
+  exit 1
+fi
+
+if ! grep -Eq '^DJANGO_SECURE_SSL_REDIRECT=1$' "$ENV_FILE"; then
+  echo "ERROR: DJANGO_SECURE_SSL_REDIRECT must explicitly be 1 in production." >&2
+  exit 1
+fi
+
+if ! grep -Eq '^DJANGO_SESSION_COOKIE_SECURE=1$' "$ENV_FILE"; then
+  echo "ERROR: DJANGO_SESSION_COOKIE_SECURE must explicitly be 1 in production." >&2
+  exit 1
+fi
+
+if ! grep -Eq '^DJANGO_CSRF_COOKIE_SECURE=1$' "$ENV_FILE"; then
+  echo "ERROR: DJANGO_CSRF_COOKIE_SECURE must explicitly be 1 in production." >&2
   exit 1
 fi
 
@@ -61,6 +75,12 @@ ACME_EMAIL="$(value ACME_EMAIL)"
 case "$ACME_EMAIL" in
   *@*.*) ;;
   *) echo "ERROR: ACME_EMAIL is not a valid-looking email address." >&2; exit 1 ;;
+esac
+
+PRESIGNED_EXPIRES="$(value S3_PRESIGNED_EXPIRES)"
+case "$PRESIGNED_EXPIRES" in
+  ''|*[!0-9]*) echo "ERROR: S3_PRESIGNED_EXPIRES must be an integer." >&2; exit 1 ;;
+  *) [ "$PRESIGNED_EXPIRES" -le 3600 ] || { echo "ERROR: S3_PRESIGNED_EXPIRES must not exceed 3600 seconds." >&2; exit 1; } ;;
 esac
 
 if grep -Eq '^METRICS_ENABLED=1$' "$ENV_FILE"; then

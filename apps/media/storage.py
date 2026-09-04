@@ -4,7 +4,6 @@ from pathlib import PurePath
 
 import boto3
 from botocore.config import Config
-from botocore.exceptions import ClientError
 from django.conf import settings
 
 
@@ -141,22 +140,12 @@ def presigned_download_url(*, object_key, filename, inline=False, content_type=N
 
 
 def ensure_bucket():
-    client = internal_client()
-    try:
-        client.head_bucket(Bucket=settings.S3_BUCKET)
-    except ClientError as exc:
-        code = str(exc.response.get("Error", {}).get("Code", ""))
-        if code not in {"404", "NoSuchBucket", "NotFound"}:
-            raise
-        kwargs = {"Bucket": settings.S3_BUCKET}
-        if settings.S3_REGION != "us-east-1":
-            kwargs["CreateBucketConfiguration"] = {
-                "LocationConstraint": settings.S3_REGION,
-            }
-        client.create_bucket(**kwargs)
+    # Bucket creation belongs to the privileged MinIO bootstrap container.
+    # The Django application intentionally receives only a bucket-scoped user.
+    internal_client().head_bucket(Bucket=settings.S3_BUCKET)
 
     if settings.S3_CONFIGURE_BUCKET_CORS and settings.S3_CORS_ALLOWED_ORIGINS:
-        client.put_bucket_cors(
+        internal_client().put_bucket_cors(
             Bucket=settings.S3_BUCKET,
             CORSConfiguration={
                 "CORSRules": [
