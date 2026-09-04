@@ -68,8 +68,6 @@ class Publication(models.Model):
             models.Index(fields=["kind", "-created_at"]),
             models.Index(fields=["author", "-created_at"]),
             models.Index(fields=["community", "-created_at"]),
-            # Stage 8.12.4 hot-path indexes. The trailing id makes pagination
-            # deterministic when multiple rows have the same timestamp.
             models.Index(
                 fields=["visibility", "-created_at", "-id"],
                 name="pub_feed_cursor_idx",
@@ -121,3 +119,48 @@ class PublicationRevision(models.Model):
 
     def __str__(self):
         return f"{self.publication.public_id} revision {self.revision_number}"
+
+
+class PublicationDraft(models.Model):
+    """Server-side publication draft used by the 0.9 autosave flow.
+
+    Draft content may intentionally be empty or incomplete. Full structured-content
+    validation happens when a non-empty draft body is saved and again at publish
+    time, so an interrupted first keystroke never becomes an invalid publication.
+    """
+
+    public_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="publication_drafts",
+    )
+    source_publication = models.ForeignKey(
+        Publication,
+        on_delete=models.CASCADE,
+        related_name="drafts",
+        null=True,
+        blank=True,
+    )
+    community = models.ForeignKey(
+        Community,
+        on_delete=models.PROTECT,
+        related_name="publication_drafts",
+        null=True,
+        blank=True,
+    )
+    kind = models.CharField(max_length=16, choices=Publication.Type.choices, default=Publication.Type.TOPIC)
+    title = models.CharField(max_length=300, blank=True)
+    content = models.JSONField(default=list)
+    tags = models.JSONField(default=list)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-updated_at", "-id"]
+        indexes = [
+            models.Index(fields=["owner", "-updated_at", "-id"], name="pub_draft_owner_idx"),
+        ]
+
+    def __str__(self):
+        return self.title or f"draft:{self.public_id}"

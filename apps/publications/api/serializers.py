@@ -5,7 +5,7 @@ from rest_framework import serializers
 from apps.communities.models import Community
 from apps.media.presentation import asset_download_url
 from apps.publications.content import validate_content_blocks
-from apps.publications.models import Publication, PublicationRevision, Tag
+from apps.publications.models import Publication, PublicationDraft, PublicationRevision, Tag
 from apps.users.api.serializers import UserPublicSerializer
 
 
@@ -200,3 +200,93 @@ class RevisionListSerializer(serializers.ModelSerializer):
 class RevisionDetailSerializer(RevisionListSerializer):
     class Meta(RevisionListSerializer.Meta):
         fields = RevisionListSerializer.Meta.fields + ["content", "tags_snapshot", "media_snapshot"]
+
+
+class DraftSourcePublicationSerializer(serializers.Serializer):
+    id = serializers.UUIDField()
+    type = serializers.CharField()
+    title = serializers.CharField()
+
+
+class PublicationDraftSerializer(serializers.ModelSerializer):
+    id = serializers.UUIDField(source="public_id", read_only=True)
+    type = serializers.ChoiceField(source="kind", choices=Publication.Type.choices, required=False)
+    community = CommunityCompactSerializer(read_only=True)
+    community_id = serializers.UUIDField(write_only=True, required=False, allow_null=True)
+    source_publication = serializers.SerializerMethodField()
+    source_publication_id = serializers.UUIDField(write_only=True, required=False, allow_null=True)
+    content = serializers.JSONField(required=False)
+    tags = serializers.ListField(
+        child=serializers.CharField(min_length=1, max_length=80),
+        required=False,
+        max_length=20,
+    )
+
+    class Meta:
+        model = PublicationDraft
+        fields = [
+            "id",
+            "type",
+            "title",
+            "content",
+            "tags",
+            "community",
+            "community_id",
+            "source_publication",
+            "source_publication_id",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["created_at", "updated_at"]
+        extra_kwargs = {"title": {"required": False, "allow_blank": True}}
+
+    @extend_schema_field(DraftSourcePublicationSerializer(allow_null=True))
+    def get_source_publication(self, obj):
+        source = obj.source_publication
+        if source is None:
+            return None
+        return {"id": source.public_id, "type": source.kind, "title": source.title}
+
+    def validate_content(self, value):
+        if value:
+            return validate_blocks_for_api(value)
+        if value != []:
+            raise serializers.ValidationError("Draft content must be a list of blocks.")
+        return value
+
+    def validate_tags(self, value):
+        result = []
+        seen = set()
+        for raw in value:
+            tag = raw.strip()
+            key = tag.casefold()
+            if tag and key not in seen:
+                result.append(tag)
+                seen.add(key)
+        return result
+
+    def validate(self, attrs):
+        request = self.context.get("request")
+        owner = request.user if request and request.user.is_authenticated else None
+
+        if "community_id" in attrs:
+            community_id = attrs.pop("community_id")
+            community = None
+            if community_id is not None:
+                community = Community.objects.filter(public_id=community_id, is_active=True).first()
+                if community is None:
+                    raise serializers.ValidationError({"community_id": "Community not found."})
+            attrs["community"] = community
+
+        if "source_publication_id" in attrs:
+            source_id = attrs.pop("source_publication_id")
+            source = None
+            if source_id is not None:
+                source = Publication.objects.filter(public_id=source_id).first()
+                if source is None:
+                    raise serializers.ValidationError({"source_publication_id": "Publication not found."})
+                if owner is None or source.author_id != owner.pk:
+                    raise serializers.ValidationError({"source_publication_id": "Only the publication author can draft edits."})
+            attrs["source_publication"] = source
+
+        return attrs

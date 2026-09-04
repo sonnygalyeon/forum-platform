@@ -1,8 +1,30 @@
 from uuid import UUID
+
 from django.core.exceptions import ValidationError
+from django.core.validators import URLValidator
 
 MAX_BLOCKS = 500
 MAX_TOTAL_TEXT_LENGTH = 500_000
+
+
+def _validate_embed(block, index):
+    url = block.get("url")
+    title = block.get("title", "")
+    description = block.get("description", "")
+    if not isinstance(url, str) or not url.strip():
+        raise ValidationError(f"Embed block {index} must contain a URL.")
+    if len(url) > 2048:
+        raise ValidationError(f"Embed block {index} URL is too long.")
+    try:
+        URLValidator(schemes=["http", "https"])(url.strip())
+    except ValidationError as exc:
+        raise ValidationError(f"Embed block {index} must use a valid http/https URL.") from exc
+    if not isinstance(title, str) or len(title) > 300:
+        raise ValidationError(f"Embed block {index} has invalid title.")
+    if not isinstance(description, str) or len(description) > 1000:
+        raise ValidationError(f"Embed block {index} has invalid description.")
+    return len(url) + len(title) + len(description)
+
 
 def validate_content_blocks(content):
     if not isinstance(content, list):
@@ -47,10 +69,13 @@ def validate_content_blocks(content):
             if not isinstance(caption, str):
                 raise ValidationError(f"Media block {index} has invalid caption.")
             total_length += len(caption)
+        elif block_type == "embed":
+            total_length += _validate_embed(block, index)
         else:
             raise ValidationError(f"Unsupported block type '{block_type}' at index {index}.")
     if total_length > MAX_TOTAL_TEXT_LENGTH:
         raise ValidationError("Publication content is too large.")
+
 
 def extract_plain_text(content):
     parts = []
@@ -62,4 +87,10 @@ def extract_plain_text(content):
             parts.append(block.get("code", ""))
         elif block_type in {"image", "video", "attachment"}:
             parts.append(block.get("caption", ""))
-    return "\n".join(part.strip() for part in parts if part.strip())
+        elif block_type == "embed":
+            parts.extend([
+                block.get("title", ""),
+                block.get("description", ""),
+                block.get("url", ""),
+            ])
+    return "\n".join(part.strip() for part in parts if isinstance(part, str) and part.strip())
