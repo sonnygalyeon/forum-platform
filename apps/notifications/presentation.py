@@ -53,8 +53,10 @@ def notification_target_url(notification) -> str:
         return f"/users/{notification.actor.public_id}"
 
     if notification.comment_id:
-        publication = notification.comment.publication
-        return f"/publications/{publication.public_id}#comment-{notification.comment.public_id}"
+        comment = notification.comment
+        publication = comment.publication
+        anchor_comment = comment.parent if comment.parent_id else comment
+        return f"/publications/{publication.public_id}#comment-{anchor_comment.public_id}"
 
     if notification.publication_id:
         return f"/publications/{notification.publication.public_id}"
