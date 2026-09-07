@@ -1,17 +1,16 @@
 from django.shortcuts import get_object_or_404
 from drf_spectacular.utils import extend_schema, extend_schema_view, inline_serializer
-from rest_framework import generics, serializers
+from rest_framework import generics, serializers, status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.notifications.cache import get_unread_count
 from apps.notifications.models import Notification, NotificationPreference
+from apps.notifications.presentation import CATEGORY_CHOICES
+from apps.notifications.read_state import mark_category_read, mark_many_read
 from apps.notifications.selectors import feed_queryset, notification_queryset
-from apps.notifications.services import (
-    mark_all_notifications_read,
-    mark_notification_read,
-)
+from apps.notifications.services import mark_notification_read
 from apps.publications.api.serializers import PublicationListSerializer
 
 from .serializers import NotificationPreferenceSerializer, NotificationSerializer
@@ -27,14 +26,29 @@ UpdatedCountSerializer = inline_serializer(
     fields={"updated": serializers.IntegerField(min_value=0)},
 )
 
+ReadManyRequestSerializer = inline_serializer(
+    name="NotificationReadManyRequest",
+    fields={
+        "ids": serializers.ListField(
+            child=serializers.UUIDField(),
+            min_length=1,
+            max_length=100,
+        )
+    },
+)
+
 
 class NotificationListView(generics.ListAPIView):
     permission_classes = [IsAuthenticated]
     serializer_class = NotificationSerializer
 
     def get_queryset(self):
-        queryset = notification_queryset(self.request.user)
-        if self.request.query_params.get("unread_only") in {"1", "true", "True"}:
+        category = self.request.query_params.get("category") or None
+        if category not in {None, *CATEGORY_CHOICES}:
+            return notification_queryset(self.request.user).none()
+        queryset = notification_queryset(self.request.user, category=category)
+        unread = self.request.query_params.get("unread") or self.request.query_params.get("unread_only")
+        if unread in {"1", "true", "True"}:
             queryset = queryset.filter(read_at__isnull=True)
         return queryset
 
@@ -77,6 +91,26 @@ class NotificationReadView(APIView):
 
 @extend_schema_view(
     put=extend_schema(
+        request=ReadManyRequestSerializer,
+        responses={200: UpdatedCountSerializer},
+        summary="Mark a group of notifications as read",
+    )
+)
+class NotificationReadManyView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def put(self, request):
+        serializer = ReadManyRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        updated = mark_many_read(
+            user=request.user,
+            public_ids=serializer.validated_data["ids"],
+        )
+        return Response({"updated": updated}, status=status.HTTP_200_OK)
+
+
+@extend_schema_view(
+    put=extend_schema(
         request=None,
         responses={200: UpdatedCountSerializer},
         summary="Mark all notifications as read",
@@ -86,7 +120,10 @@ class NotificationReadAllView(APIView):
     permission_classes = [IsAuthenticated]
 
     def put(self, request):
-        updated = mark_all_notifications_read(user=request.user)
+        category = request.query_params.get("category") or None
+        if category not in {None, *CATEGORY_CHOICES}:
+            raise serializers.ValidationError({"category": "Unknown notification category."})
+        updated = mark_category_read(user=request.user, category=category)
         return Response({"updated": updated})
 
 
