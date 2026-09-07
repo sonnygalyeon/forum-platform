@@ -3,11 +3,12 @@
 import Link from "next/link";
 import { Bell, LogIn, MessageCircle, Plus, Search, ShieldCheck, UserRound } from "lucide-react";
 import { NightIrisMark } from "@/components/brand/night-iris-mark";
+import { MessengerUnreadBadge } from "@/components/messenger/unread-badge";
+import { NotificationUnreadBadge } from "@/components/notifications/unread-badge";
 import { UserAvatar } from "@/components/profile/user-avatar";
-import { ThemeToggle } from "./theme-toggle";
 import { GlobalSearch } from "@/components/search/global-search";
 import { useAuth } from "@/providers/auth-provider";
-import { MessengerUnreadBadge } from "@/components/messenger/unread-badge";
+import { ThemeToggle } from "./theme-toggle";
 
 export function Header() {
   const { user, loading } = useAuth();
@@ -28,7 +29,7 @@ export function Header() {
             <>
               <Link href="/new" className="primary-button compact-button"><Plus size={15}/> Создать</Link>
               <Link href="/messages" className="icon-button messenger-header-link" aria-label="Сообщения"><MessageCircle size={17}/><MessengerUnreadBadge compact/></Link>
-              <Link href="/notifications" className="icon-button" aria-label="Уведомления"><Bell size={17}/></Link>
+              <Link href="/notifications" className="icon-button messenger-header-link" aria-label="Уведомления"><Bell size={17}/><NotificationUnreadBadge compact/></Link>
               <Link href="/profile" aria-label="Профиль"><UserAvatar user={user} size="sm"/></Link>
             </>
           ) : !loading ? (
