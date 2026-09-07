@@ -1,5 +1,6 @@
 from rest_framework import serializers
 
+from apps.publications.api.serializers import PublicationListSerializer
 from apps.social.models import UserBlock, UserFollow, UserMute
 from apps.users.api.serializers import UserPublicSerializer
 
@@ -42,3 +43,72 @@ class MutedUserSerializer(serializers.ModelSerializer):
 
 class BookmarkStateSerializer(serializers.Serializer):
     bookmarked = serializers.BooleanField()
+
+
+class FeedRecommendationReasonSerializer(serializers.Serializer):
+    code = serializers.CharField()
+    label = serializers.CharField()
+
+
+class FeedPublicationSerializer(PublicationListSerializer):
+    feed_score = serializers.IntegerField(read_only=True)
+    recommendation_reasons = serializers.SerializerMethodField()
+
+    class Meta(PublicationListSerializer.Meta):
+        fields = PublicationListSerializer.Meta.fields + [
+            "feed_score",
+            "recommendation_reasons",
+        ]
+
+    def get_recommendation_reasons(self, obj) -> list[dict[str, str]]:
+        reasons: list[dict[str, str]] = []
+
+        if getattr(obj, "feed_followed_author", False):
+            reasons.append({
+                "code": "followed_author",
+                "label": "Вы подписаны на автора",
+            })
+
+        if getattr(obj, "feed_subscribed_community", False) and obj.community is not None:
+            reasons.append({
+                "code": "subscribed_community",
+                "label": f"Из сообщества /{obj.community.slug}",
+            })
+
+        interest_tag_ids = set(self.context.get("feed_interest_tag_ids", ()))
+        if interest_tag_ids:
+            matched_names = [
+                tag.name
+                for tag in obj.tags.all()
+                if tag.pk in interest_tag_ids
+            ][:2]
+            if matched_names:
+                reasons.append({
+                    "code": "matching_tags",
+                    "label": "По интересу: " + ", ".join(matched_names),
+                })
+
+        if getattr(obj, "comment_count", 0) >= 4:
+            reasons.append({
+                "code": "active_discussion",
+                "label": "Активно обсуждают",
+            })
+        elif getattr(obj, "feed_bookmark_count", 0) >= 3:
+            reasons.append({
+                "code": "popular",
+                "label": "Часто сохраняют",
+            })
+
+        if not reasons:
+            if getattr(obj, "feed_freshness_score", 0) >= 16:
+                reasons.append({
+                    "code": "fresh",
+                    "label": "Свежее в Night Iris",
+                })
+            else:
+                reasons.append({
+                    "code": "discovery",
+                    "label": "Для расширения ленты",
+                })
+
+        return reasons[:3]
