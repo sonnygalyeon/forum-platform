@@ -121,19 +121,27 @@ The personalized feed uses explicit first-party relationships, inferred tag inte
 
 ## Notification center
 
-Authenticated clients can use:
+The stable 1.0 notification endpoints remain available:
 
 ```text
 GET /api/v1/notifications/
 GET /api/v1/notifications/unread-count/
 PUT /api/v1/notifications/{id}/read/
-PUT /api/v1/notifications/read/
 PUT /api/v1/notifications/read-all/
 GET /api/v1/notifications/preferences/
 PATCH /api/v1/notifications/preferences/
 ```
 
-Notification lists remain cursor-paginated. Optional list filters are additive:
+`GET /api/v1/notifications/` deliberately retains the 1.0 response schema so existing Web/mobile clients do not gain new required fields.
+
+Night Iris 1.1 adds an explicit center representation and grouped-read operation:
+
+```text
+GET /api/v1/notifications/center/
+PUT /api/v1/notifications/read/
+```
+
+The center list is cursor-paginated and accepts:
 
 ```text
 ?category=replies
@@ -143,9 +151,9 @@ Notification lists remain cursor-paginated. Optional list filters are additive:
 ?unread=1
 ```
 
-`unread_only=1` remains accepted for compatibility.
+`unread_only=1` remains accepted for compatibility. Category/unread filtering is also safe on the legacy list, but clients that need 1.1 presentation metadata should use `/notifications/center/`.
 
-Each notification now includes additive presentation metadata:
+Center list items extend the legacy notification representation with derived presentation fields:
 
 ```json
 {
@@ -156,7 +164,7 @@ Each notification now includes additive presentation metadata:
 }
 ```
 
-`category`, `priority`, `label` and `target_url` are derived presentation fields. Clients should not persist them as independent source-of-truth state.
+`category`, `priority`, `label` and `target_url` are derived fields. They are not independent source-of-truth state and should not be persisted as such by clients.
 
 Grouped UI events can be acknowledged in one request:
 
@@ -179,7 +187,32 @@ The response reports how many unread notifications owned by the authenticated us
 
 `PUT /api/v1/notifications/read-all/?category=replies` marks only that category as read. Omitting `category` preserves the existing mark-all behavior.
 
-Notification transport is not the durable state. Clients must reconcile unread/list state from REST after focus/reconnect even when a future realtime delivery transport is used.
+### Notification realtime transport
+
+The web client obtains a one-time signed user ticket from:
+
+```text
+POST /api/v1/messenger/ws-ticket/
+```
+
+and may then connect to:
+
+```text
+/ws/notifications/?ticket=<one-time-ticket>
+```
+
+Notification WebSocket authentication reuses the existing user-scoped Messenger `TicketAuthMiddleware`. Tickets are short-lived and their Redis nonce is consumed on first use.
+
+The socket is an invalidation transport, not the durable notification store. A committed notification may produce:
+
+```json
+{
+  "type": "notification.changed",
+  "notification_id": "<uuid>"
+}
+```
+
+Clients then reconcile the authorized list and unread count through REST. Reconnect, window-focus refresh and periodic REST synchronization remain fallback paths, so a missed WebSocket event cannot permanently desynchronize notification state.
 
 ## Health and provenance
 
