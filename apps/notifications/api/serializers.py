@@ -2,6 +2,12 @@ from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
 from apps.notifications.models import Notification, NotificationPreference
+from apps.notifications.presentation import (
+    notification_category,
+    notification_label,
+    notification_priority,
+    notification_target_url,
+)
 from apps.users.api.serializers import UserPublicSerializer
 
 
@@ -24,12 +30,20 @@ class NotificationSerializer(serializers.ModelSerializer):
     publication = serializers.SerializerMethodField()
     comment = serializers.SerializerMethodField()
     report_id = serializers.SerializerMethodField()
+    category = serializers.SerializerMethodField()
+    priority = serializers.SerializerMethodField()
+    target_url = serializers.SerializerMethodField()
+    label = serializers.SerializerMethodField()
 
     class Meta:
         model = Notification
         fields = [
             "id",
             "kind",
+            "category",
+            "priority",
+            "label",
+            "target_url",
             "actor",
             "publication",
             "comment",
@@ -41,6 +55,18 @@ class NotificationSerializer(serializers.ModelSerializer):
 
     def get_is_read(self, obj) -> bool:
         return obj.read_at is not None
+
+    def get_category(self, obj) -> str:
+        return notification_category(obj)
+
+    def get_priority(self, obj) -> str:
+        return notification_priority(obj)
+
+    def get_target_url(self, obj) -> str:
+        return notification_target_url(obj)
+
+    def get_label(self, obj) -> str:
+        return notification_label(obj)
 
     @extend_schema_field(NotificationPublicationSerializer(allow_null=True))
     def get_publication(self, obj) -> dict | None:
