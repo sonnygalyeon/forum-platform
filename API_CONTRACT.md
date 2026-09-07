@@ -119,6 +119,68 @@ Current reason codes include:
 
 The personalized feed uses explicit first-party relationships, inferred tag interests, engagement and freshness. Accounts without enough history fall back to freshness/engagement rather than receiving an empty feed.
 
+## Notification center
+
+Authenticated clients can use:
+
+```text
+GET /api/v1/notifications/
+GET /api/v1/notifications/unread-count/
+PUT /api/v1/notifications/{id}/read/
+PUT /api/v1/notifications/read/
+PUT /api/v1/notifications/read-all/
+GET /api/v1/notifications/preferences/
+PATCH /api/v1/notifications/preferences/
+```
+
+Notification lists remain cursor-paginated. Optional list filters are additive:
+
+```text
+?category=replies
+?category=social
+?category=communities
+?category=moderation
+?unread=1
+```
+
+`unread_only=1` remains accepted for compatibility.
+
+Each notification now includes additive presentation metadata:
+
+```json
+{
+  "category": "replies",
+  "priority": "normal",
+  "label": "Новый ответ на публикацию",
+  "target_url": "/publications/<uuid>#comment-<uuid>"
+}
+```
+
+`category`, `priority`, `label` and `target_url` are derived presentation fields. Clients should not persist them as independent source-of-truth state.
+
+Grouped UI events can be acknowledged in one request:
+
+```http
+PUT /api/v1/notifications/read/
+Content-Type: application/json
+
+{
+  "ids": ["<uuid>", "<uuid>"]
+}
+```
+
+The response reports how many unread notifications owned by the authenticated user were updated:
+
+```json
+{
+  "updated": 2
+}
+```
+
+`PUT /api/v1/notifications/read-all/?category=replies` marks only that category as read. Omitting `category` preserves the existing mark-all behavior.
+
+Notification transport is not the durable state. Clients must reconcile unread/list state from REST after focus/reconnect even when a future realtime delivery transport is used.
+
 ## Health and provenance
 
 ```text
