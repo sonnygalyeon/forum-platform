@@ -22,7 +22,7 @@ export function CommentItem({ comment, publicationId }: { comment: Comment; publ
   const acceptance = useMutation({ mutationFn: (method: "PUT" | "DELETE") => clientApi(`/comments/${comment.id}/accepted/`, { method }), onSuccess: invalidate });
 
   return (
-    <article className={`comment-card ${comment.is_accepted ? "comment-accepted" : ""}`}>
+    <article id={`comment-${comment.id}`} className={`comment-card ${comment.is_accepted ? "comment-accepted" : ""}`}>
       <div className="comment-vote">
         <button disabled={!comment.can_vote || vote.isPending} onClick={() => vote.mutate(1)} className={comment.my_vote === 1 ? "active" : ""}><ChevronUp size={18}/></button>
         <strong>{comment.score}</strong>
