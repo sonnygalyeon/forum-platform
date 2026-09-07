@@ -59,6 +59,10 @@ def recover_pending_notification_events():
     for event_id in event_ids:
         process_notification_event.delay(event_id)
 
+    now = timezone.now()
+    if now.hour == 3 and now.minute == 0:
+        cleanup_old_notifications.delay()
+
 
 @shared_task(ignore_result=True)
 def cleanup_old_notifications():
