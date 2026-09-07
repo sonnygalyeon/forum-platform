@@ -59,7 +59,7 @@ class NotificationCenterTests(TestCase):
             comment=comment,
         )
 
-    def test_list_exposes_category_priority_label_and_deep_link(self):
+    def test_center_exposes_category_priority_label_and_deep_link(self):
         publication = self._publication()
         comment = Comment.objects.create(
             publication=publication,
@@ -74,7 +74,7 @@ class NotificationCenterTests(TestCase):
             comment=comment,
         )
 
-        response = self.client.get("/api/v1/notifications/")
+        response = self.client.get("/api/v1/notifications/center/")
 
         self.assertEqual(response.status_code, 200)
         item = response.data["results"][0]
@@ -86,6 +86,18 @@ class NotificationCenterTests(TestCase):
             item["target_url"],
             f"/publications/{publication.public_id}#comment-{comment.public_id}",
         )
+
+    def test_legacy_list_keeps_1_0_shape(self):
+        self._notification(NotificationEvent.Kind.NEW_FOLLOWER)
+
+        response = self.client.get("/api/v1/notifications/")
+
+        self.assertEqual(response.status_code, 200)
+        item = response.data["results"][0]
+        self.assertNotIn("category", item)
+        self.assertNotIn("priority", item)
+        self.assertNotIn("label", item)
+        self.assertNotIn("target_url", item)
 
     def test_category_filter_separates_community_and_social_notifications(self):
         community = Community.objects.create(
@@ -105,8 +117,8 @@ class NotificationCenterTests(TestCase):
             publication=social_publication,
         )
 
-        community_response = self.client.get("/api/v1/notifications/?category=communities")
-        social_response = self.client.get("/api/v1/notifications/?category=social")
+        community_response = self.client.get("/api/v1/notifications/center/?category=communities")
+        social_response = self.client.get("/api/v1/notifications/center/?category=social")
 
         self.assertEqual(
             [item["id"] for item in community_response.data["results"]],
