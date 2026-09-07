@@ -9,13 +9,16 @@ from django.core.asgi import get_asgi_application
 django_asgi_application = get_asgi_application()
 
 from apps.messenger.middleware import TicketAuthMiddleware
-from apps.messenger.routing import websocket_urlpatterns
+from apps.messenger.routing import websocket_urlpatterns as messenger_websocket_urlpatterns
+from apps.notifications.routing import websocket_urlpatterns as notification_websocket_urlpatterns
 
 application = ProtocolTypeRouter(
     {
         "http": django_asgi_application,
         "websocket": AllowedHostsOriginValidator(
-            TicketAuthMiddleware(URLRouter(websocket_urlpatterns))
+            TicketAuthMiddleware(
+                URLRouter(messenger_websocket_urlpatterns + notification_websocket_urlpatterns)
+            )
         ),
     }
 )
