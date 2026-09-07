@@ -82,6 +82,43 @@ GET /api/v1/discover/
 
 Search is visibility-aware. Personalized discovery is intentionally explainable and degrades to deterministic cold-start content for accounts without sufficient history.
 
+## Home feeds
+
+Authenticated timeline clients can use:
+
+```text
+GET /api/v1/feed/          followed authors + subscribed communities
+GET /api/v1/feed/for-you/  explainable personalized ranking
+```
+
+Both endpoints use cursor pagination and respect viewer mute/block state. `/feed/for-you/` returns additive recommendation metadata on each publication:
+
+```json
+{
+  "feed_score": 84,
+  "recommendation_reasons": [
+    {
+      "code": "followed_author",
+      "label": "Вы подписаны на автора"
+    }
+  ]
+}
+```
+
+Clients should treat `feed_score` as an implementation detail for ordering, not as a user reputation value or a globally comparable quality score. `recommendation_reasons[].code` is the machine-friendly explanation signal; labels may evolve with client localization.
+
+Current reason codes include:
+
+- `followed_author`;
+- `subscribed_community`;
+- `matching_tags`;
+- `active_discussion`;
+- `popular`;
+- `fresh`;
+- `discovery`.
+
+The personalized feed uses explicit first-party relationships, inferred tag interests, engagement and freshness. Accounts without enough history fall back to freshness/engagement rather than receiving an empty feed.
+
 ## Health and provenance
 
 ```text
