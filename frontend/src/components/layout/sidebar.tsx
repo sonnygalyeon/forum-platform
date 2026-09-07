@@ -3,8 +3,9 @@
 import Link from "next/link";
 import { Bell, Bookmark, Compass, FileEdit, Flag, Home, MessageCircle, PlusSquare, Search, ShieldCheck, UsersRound, UserRound } from "lucide-react";
 import { usePathname } from "next/navigation";
-import { useAuth } from "@/providers/auth-provider";
 import { MessengerUnreadBadge } from "@/components/messenger/unread-badge";
+import { NotificationUnreadBadge } from "@/components/notifications/unread-badge";
+import { useAuth } from "@/providers/auth-provider";
 
 const publicItems = [
   { href: "/", label: "Лента", icon: Home },
@@ -27,5 +28,5 @@ export function Sidebar() {
     { href: "/reports", label: "Мои обращения", icon: Flag },
     ...(user.is_staff ? [{ href: "/admin", label: "Админка", icon: ShieldCheck }] : []),
   ] : publicItems;
-  return <aside className="sidebar"><div className="eyebrow">НАВИГАЦИЯ</div><nav>{items.map(({href,label,icon:Icon}) => <Link key={href} href={href} className={`nav-item ${pathname === href || (href!=="/"&&pathname.startsWith(href)) ? "nav-item-active" : ""}`}><Icon size={17}/>{label}{href === "/messages" ? <MessengerUnreadBadge compact/> : null}</Link>)}</nav><div className="sidebar-note"><span className="status-dot"/> Night Iris 0.9 beta<br/><small>API-first · structured knowledge + realtime</small></div></aside>;
+  return <aside className="sidebar"><div className="eyebrow">НАВИГАЦИЯ</div><nav>{items.map(({href,label,icon:Icon}) => <Link key={href} href={href} className={`nav-item ${pathname === href || (href!=="/"&&pathname.startsWith(href)) ? "nav-item-active" : ""}`}><Icon size={17}/>{label}{href === "/messages" ? <MessengerUnreadBadge compact/> : null}{href === "/notifications" ? <NotificationUnreadBadge compact/> : null}</Link>)}</nav><div className="sidebar-note"><span className="status-dot"/> Night Iris 1.1<br/><small>API-first · personalized knowledge + realtime</small></div></aside>;
 }
