@@ -22,6 +22,7 @@ def notification_queryset(user, *, category=None):
             "publication__community",
             "comment",
             "comment__publication",
+            "comment__parent",
             "report",
         )
         .order_by("-created_at")
