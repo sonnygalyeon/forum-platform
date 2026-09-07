@@ -39,19 +39,35 @@ class NotificationReadManyRequestSerializer(serializers.Serializer):
     )
 
 
+def _filtered_notifications(request):
+    category = request.query_params.get("category") or None
+    if category not in {None, *CATEGORY_CHOICES}:
+        return notification_queryset(request.user).none()
+    queryset = notification_queryset(request.user, category=category)
+    unread = request.query_params.get("unread") or request.query_params.get("unread_only")
+    if unread in {"1", "true", "True"}:
+        queryset = queryset.filter(read_at__isnull=True)
+    return queryset
+
+
 class NotificationListView(generics.ListAPIView):
+    """Stable 1.0 list representation."""
+
+    permission_classes = [IsAuthenticated]
+    serializer_class = NotificationSerializer
+
+    def get_queryset(self):
+        return _filtered_notifications(self.request)
+
+
+class NotificationCenterListView(generics.ListAPIView):
+    """Additive 1.1 notification center representation."""
+
     permission_classes = [IsAuthenticated]
     serializer_class = NotificationCenterSerializer
 
     def get_queryset(self):
-        category = self.request.query_params.get("category") or None
-        if category not in {None, *CATEGORY_CHOICES}:
-            return notification_queryset(self.request.user).none()
-        queryset = notification_queryset(self.request.user, category=category)
-        unread = self.request.query_params.get("unread") or self.request.query_params.get("unread_only")
-        if unread in {"1", "true", "True"}:
-            queryset = queryset.filter(read_at__isnull=True)
-        return queryset
+        return _filtered_notifications(self.request)
 
 
 @extend_schema_view(
