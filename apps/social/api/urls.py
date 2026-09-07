@@ -1,9 +1,11 @@
 from django.urls import path
 
 from .views import (
+    FollowingFeedView,
     MyBlockedUsersView,
     MyBookmarksView,
     MyMutedUsersView,
+    PersonalizedFeedView,
     PublicationBookmarkView,
     UserBlockView,
     UserFollowersView,
@@ -14,6 +16,8 @@ from .views import (
 
 
 urlpatterns = [
+    path("feed/", FollowingFeedView.as_view(), name="following-feed"),
+    path("feed/for-you/", PersonalizedFeedView.as_view(), name="personalized-feed"),
     path("users/<uuid:user_id>/follow/", UserFollowView.as_view(), name="user-follow"),
     path("users/<uuid:user_id>/block/", UserBlockView.as_view(), name="user-block"),
     path("users/<uuid:user_id>/mute/", UserMuteView.as_view(), name="user-mute"),
