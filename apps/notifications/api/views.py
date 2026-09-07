@@ -13,7 +13,11 @@ from apps.notifications.selectors import feed_queryset, notification_queryset
 from apps.notifications.services import mark_notification_read
 from apps.publications.api.serializers import PublicationListSerializer
 
-from .serializers import NotificationPreferenceSerializer, NotificationSerializer
+from .serializers import (
+    NotificationCenterSerializer,
+    NotificationPreferenceSerializer,
+    NotificationSerializer,
+)
 
 
 UnreadCountSerializer = inline_serializer(
@@ -37,7 +41,7 @@ class NotificationReadManyRequestSerializer(serializers.Serializer):
 
 class NotificationListView(generics.ListAPIView):
     permission_classes = [IsAuthenticated]
-    serializer_class = NotificationSerializer
+    serializer_class = NotificationCenterSerializer
 
     def get_queryset(self):
         category = self.request.query_params.get("category") or None
