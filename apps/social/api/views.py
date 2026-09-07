@@ -8,11 +8,24 @@ from rest_framework.views import APIView
 from apps.publications.api.serializers import PublicationListSerializer
 from apps.publications.models import Publication
 from apps.publications.selectors import publication_queryset
+from apps.social.feed import (
+    following_feed_queryset,
+    personalized_feed_queryset,
+    viewer_interest_tag_ids,
+)
 from apps.social.models import PublicationBookmark, UserBlock, UserFollow, UserMute
 from apps.social.services import block_user, follow_user, mute_user, unblock_user, unfollow_user, unmute_user
 from apps.users.models import User
 
-from .serializers import BookmarkStateSerializer, BlockedUserSerializer, FollowerSerializer, FollowingSerializer, MutedUserSerializer
+from .pagination import PersonalizedFeedCursorPagination
+from .serializers import (
+    BookmarkStateSerializer,
+    BlockedUserSerializer,
+    FeedPublicationSerializer,
+    FollowerSerializer,
+    FollowingSerializer,
+    MutedUserSerializer,
+)
 
 
 @extend_schema_view(
@@ -151,3 +164,35 @@ class MyBookmarksView(generics.ListAPIView):
         return publication_queryset(self.request.user).filter(
             bookmark_edges__user=self.request.user
         ).order_by("-bookmark_edges__created_at", "-id")
+
+
+@extend_schema(summary="Chronological feed from followed users and subscribed communities")
+class FollowingFeedView(generics.ListAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = PublicationListSerializer
+
+    def get_queryset(self):
+        return following_feed_queryset(self.request.user)
+
+
+@extend_schema(summary="Explainable personalized publication feed")
+class PersonalizedFeedView(generics.ListAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = FeedPublicationSerializer
+    pagination_class = PersonalizedFeedCursorPagination
+
+    def _interest_tag_ids(self):
+        if not hasattr(self, "_cached_interest_tag_ids"):
+            self._cached_interest_tag_ids = viewer_interest_tag_ids(self.request.user)
+        return self._cached_interest_tag_ids
+
+    def get_queryset(self):
+        return personalized_feed_queryset(
+            self.request.user,
+            interest_tag_ids=self._interest_tag_ids(),
+        )
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context["feed_interest_tag_ids"] = self._interest_tag_ids()
+        return context
