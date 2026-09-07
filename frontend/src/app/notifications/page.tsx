@@ -43,7 +43,7 @@ export default function NotificationsPage() {
   const [unreadOnly, setUnreadOnly] = useState(false);
 
   const suffix = `${category ? `category=${category}&` : ""}${unreadOnly ? "unread=1" : ""}`.replace(/&$/, "");
-  const endpoint = `/notifications/${suffix ? `?${suffix}` : ""}`;
+  const endpoint = `/notifications/center/${suffix ? `?${suffix}` : ""}`;
 
   const query = useQuery({
     queryKey: ["notifications", category, unreadOnly],
