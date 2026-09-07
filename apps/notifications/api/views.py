@@ -26,16 +26,13 @@ UpdatedCountSerializer = inline_serializer(
     fields={"updated": serializers.IntegerField(min_value=0)},
 )
 
-ReadManyRequestSerializer = inline_serializer(
-    name="NotificationReadManyRequest",
-    fields={
-        "ids": serializers.ListField(
-            child=serializers.UUIDField(),
-            min_length=1,
-            max_length=100,
-        )
-    },
-)
+
+class NotificationReadManyRequestSerializer(serializers.Serializer):
+    ids = serializers.ListField(
+        child=serializers.UUIDField(),
+        min_length=1,
+        max_length=100,
+    )
 
 
 class NotificationListView(generics.ListAPIView):
@@ -91,7 +88,7 @@ class NotificationReadView(APIView):
 
 @extend_schema_view(
     put=extend_schema(
-        request=ReadManyRequestSerializer,
+        request=NotificationReadManyRequestSerializer,
         responses={200: UpdatedCountSerializer},
         summary="Mark a group of notifications as read",
     )
@@ -100,7 +97,7 @@ class NotificationReadManyView(APIView):
     permission_classes = [IsAuthenticated]
 
     def put(self, request):
-        serializer = ReadManyRequestSerializer(data=request.data)
+        serializer = NotificationReadManyRequestSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         updated = mark_many_read(
             user=request.user,
