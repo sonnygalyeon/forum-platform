@@ -90,10 +90,11 @@ class FeedTests(TestCase):
         fresh = self._publication(self.bob, "fresh unrelated")
 
         ranked = list(personalized_feed_queryset(self.viewer))
+        by_id = {publication.pk: publication for publication in ranked}
 
         self.assertEqual(ranked[0].pk, followed.pk)
-        self.assertTrue(ranked[0].feed_followed_author)
-        self.assertGreater(ranked[0].feed_score, fresh.feed_score if hasattr(fresh, "feed_score") else 0)
+        self.assertTrue(by_id[followed.pk].feed_followed_author)
+        self.assertGreater(by_id[followed.pk].feed_score, by_id[fresh.pk].feed_score)
 
     def test_interest_tags_are_derived_from_bookmarks_and_affect_ranking(self):
         seed = self._publication(self.alice, "python seed", tags=("Python",), days_old=10)
