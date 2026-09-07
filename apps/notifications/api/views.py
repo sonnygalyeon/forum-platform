@@ -52,6 +52,7 @@ class NotificationListView(generics.ListAPIView):
 
 @extend_schema_view(
     get=extend_schema(
+        operation_id="notification_unread_count",
         responses={200: UnreadCountSerializer},
         summary="Get unread notification count",
     )
@@ -65,6 +66,7 @@ class NotificationUnreadCountView(APIView):
 
 @extend_schema_view(
     put=extend_schema(
+        operation_id="notification_mark_read",
         request=None,
         responses={200: NotificationSerializer},
         summary="Mark notification as read",
@@ -88,6 +90,7 @@ class NotificationReadView(APIView):
 
 @extend_schema_view(
     put=extend_schema(
+        operation_id="notification_mark_many_read",
         request=NotificationReadManyRequestSerializer,
         responses={200: UpdatedCountSerializer},
         summary="Mark a group of notifications as read",
@@ -108,6 +111,7 @@ class NotificationReadManyView(APIView):
 
 @extend_schema_view(
     put=extend_schema(
+        operation_id="notification_mark_all_read",
         request=None,
         responses={200: UpdatedCountSerializer},
         summary="Mark all notifications as read",
