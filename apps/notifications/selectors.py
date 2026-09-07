@@ -1,22 +1,50 @@
 from django.db.models import Q
 
-from apps.notifications.models import Notification
+from apps.notifications.models import Notification, NotificationEvent
+from apps.notifications.presentation import (
+    CATEGORY_COMMUNITIES,
+    CATEGORY_MODERATION,
+    CATEGORY_REPLIES,
+    CATEGORY_SOCIAL,
+    REPLY_KINDS,
+)
 from apps.publications.selectors import publication_queryset
 from apps.social.models import CommunitySubscription, UserFollow
 
 
-def notification_queryset(user):
-    return (
+def notification_queryset(user, *, category=None):
+    queryset = (
         Notification.objects
         .filter(recipient=user)
         .select_related(
             "actor",
             "publication",
+            "publication__community",
             "comment",
+            "comment__publication",
             "report",
         )
         .order_by("-created_at")
     )
+
+    if category == CATEGORY_REPLIES:
+        return queryset.filter(kind__in=REPLY_KINDS)
+    if category == CATEGORY_MODERATION:
+        return queryset.filter(kind=NotificationEvent.Kind.MODERATION_UPDATE)
+    if category == CATEGORY_COMMUNITIES:
+        return queryset.filter(
+            kind=NotificationEvent.Kind.NEW_PUBLICATION,
+            publication__community__isnull=False,
+        )
+    if category == CATEGORY_SOCIAL:
+        return queryset.filter(
+            Q(kind=NotificationEvent.Kind.NEW_FOLLOWER)
+            | Q(
+                kind=NotificationEvent.Kind.NEW_PUBLICATION,
+                publication__community__isnull=True,
+            )
+        )
+    return queryset
 
 
 def feed_queryset(user):
