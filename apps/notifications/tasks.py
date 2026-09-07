@@ -1,7 +1,9 @@
+from datetime import timedelta
+
 from celery import shared_task
 from django.utils import timezone
 
-from apps.notifications.models import NotificationEvent
+from apps.notifications.models import Notification, NotificationEvent
 from apps.notifications.services import dispatch_notification_event
 
 
@@ -56,3 +58,33 @@ def recover_pending_notification_events():
     )
     for event_id in event_ids:
         process_notification_event.delay(event_id)
+
+
+@shared_task(ignore_result=True)
+def cleanup_old_notifications():
+    now = timezone.now()
+    notification_cutoff = now - timedelta(days=180)
+    event_cutoff = now - timedelta(days=30)
+    failed_event_cutoff = now - timedelta(days=90)
+
+    deleted_notifications, _ = Notification.objects.filter(
+        created_at__lt=notification_cutoff,
+    ).delete()
+
+    deleted_done_events, _ = NotificationEvent.objects.filter(
+        status=NotificationEvent.Status.DONE,
+        created_at__lt=event_cutoff,
+        notifications__isnull=True,
+    ).delete()
+
+    deleted_failed_events, _ = NotificationEvent.objects.filter(
+        status=NotificationEvent.Status.FAILED,
+        created_at__lt=failed_event_cutoff,
+        notifications__isnull=True,
+    ).delete()
+
+    return {
+        "notifications": deleted_notifications,
+        "done_events": deleted_done_events,
+        "failed_events": deleted_failed_events,
+    }
