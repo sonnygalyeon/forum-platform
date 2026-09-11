@@ -58,12 +58,28 @@ class FeedQualityAdjustmentSerializer(serializers.Serializer):
 
 class FeedPublicationSerializer(PublicationListSerializer):
     feed_score = serializers.IntegerField(read_only=True)
+    feed_base_score = serializers.IntegerField(read_only=True, default=0)
+    reaction_total = serializers.IntegerField(
+        source="feed_reaction_count",
+        read_only=True,
+        default=0,
+    )
+    is_exploration = serializers.BooleanField(
+        source="feed_is_exploration",
+        read_only=True,
+        default=False,
+    )
     recommendation_reasons = serializers.SerializerMethodField()
+    quality_adjustments = serializers.SerializerMethodField()
 
     class Meta(PublicationListSerializer.Meta):
         fields = PublicationListSerializer.Meta.fields + [
             "feed_score",
+            "feed_base_score",
+            "reaction_total",
+            "is_exploration",
             "recommendation_reasons",
+            "quality_adjustments",
         ]
 
     def get_quality_adjustments(self, obj) -> list[dict[str, object]]:
