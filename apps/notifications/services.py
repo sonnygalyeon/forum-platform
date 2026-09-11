@@ -173,6 +173,12 @@ def dispatch_notification_event(event):
             return int(_create_notification(event, event.report.reporter_id))
         return 0
 
+    if kind == NotificationEvent.Kind.PUBLICATION_REACTION:
+        publication = event.publication
+        if publication and _preference_enabled(publication.author_id, "publication_reactions"):
+            return int(_create_notification(event, publication.author_id))
+        return 0
+
     raise ValueError(f"Unsupported notification event kind: {kind}")
 
 
