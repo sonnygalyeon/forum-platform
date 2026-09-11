@@ -10,13 +10,29 @@ from apps.communities.models import Community
 from apps.discussions.models import Comment
 from apps.publications.models import Publication
 from apps.social.feed import viewer_interest_tag_ids
-from apps.social.models import CommunitySubscription, UserFollow
+from apps.social.models import CommunitySubscription, UserBlock, UserFollow, UserMute
 from apps.users.models import User
 
 
 ACTIVITY_WINDOW_DAYS = 30
 TIMELINE_LIMIT = 60
 RECOMMENDATION_LIMIT = 100
+
+
+
+def _hidden_user_ids(viewer) -> set[int]:
+    if viewer is None or not viewer.is_authenticated:
+        return set()
+    blocked = set(
+        UserBlock.objects.filter(blocker=viewer).values_list("blocked_id", flat=True)
+    )
+    blocked.update(
+        UserBlock.objects.filter(blocked=viewer).values_list("blocker_id", flat=True)
+    )
+    blocked.update(
+        UserMute.objects.filter(muter=viewer).values_list("muted_id", flat=True)
+    )
+    return blocked
 
 
 def community_activity_summary(community) -> dict:
@@ -101,8 +117,9 @@ def community_top_tags(community, *, limit=8) -> list[dict]:
     )
 
 
-def community_contributor_rows(community, *, days=ACTIVITY_WINDOW_DAYS) -> list[dict]:
+def community_contributor_rows(community, *, viewer=None, days=ACTIVITY_WINDOW_DAYS) -> list[dict]:
     cutoff = timezone.now() - timedelta(days=days)
+    hidden_ids = _hidden_user_ids(viewer)
 
     users = (
         User.objects.filter(is_active=True)
@@ -158,6 +175,8 @@ def community_contributor_rows(community, *, days=ACTIVITY_WINDOW_DAYS) -> list[
         )
         .distinct()
     )
+    if hidden_ids:
+        users = users.exclude(pk__in=hidden_ids)
 
     rows = []
     for user in users:
@@ -187,13 +206,16 @@ def community_contributor_rows(community, *, days=ACTIVITY_WINDOW_DAYS) -> list[
     return rows
 
 
-def community_activity_timeline(community, *, limit=TIMELINE_LIMIT) -> list[dict]:
-    publications = list(
-        Publication.objects.filter(
+def community_activity_timeline(community, *, viewer=None, limit=TIMELINE_LIMIT) -> list[dict]:
+    hidden_ids = _hidden_user_ids(viewer)
+    publication_queryset = Publication.objects.filter(
             community=community,
             visibility=Publication.Visibility.PUBLISHED,
         )
-        .select_related(
+    if hidden_ids:
+        publication_queryset = publication_queryset.exclude(author_id__in=hidden_ids)
+    publications = list(
+        publication_queryset.select_related(
             "author",
             "author__avatar_asset",
             "author__banner_asset",
@@ -201,13 +223,15 @@ def community_activity_timeline(community, *, limit=TIMELINE_LIMIT) -> list[dict
         )
         .order_by("-created_at", "-id")[:limit]
     )
-    comments = list(
-        Comment.objects.filter(
+    comment_queryset = Comment.objects.filter(
             publication__community=community,
             publication__visibility=Publication.Visibility.PUBLISHED,
             visibility=Comment.Visibility.PUBLISHED,
         )
-        .select_related(
+    if hidden_ids:
+        comment_queryset = comment_queryset.exclude(author_id__in=hidden_ids)
+    comments = list(
+        comment_queryset.select_related(
             "author",
             "author__avatar_asset",
             "author__banner_asset",
@@ -323,6 +347,9 @@ def recommended_community_rows(viewer) -> list[dict]:
             "name",
         )[:RECOMMENDATION_LIMIT]
     )
+
+    if hidden_ids:
+        queryset = queryset.exclude(owner_id__in=hidden_ids)
 
     rows = []
     for community in queryset:
