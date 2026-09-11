@@ -37,6 +37,7 @@ test("article can be created through the frontend BFF and opened", async ({ page
   await expect(page.getByText(title, { exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: /Нравится/ })).toBeVisible();
   await expect(page.getByText(/0 реакций/)).toBeVisible();
+  await expect(page.locator(".publication-engagement")).toHaveAttribute("data-realtime", /connecting|live|reconnecting/);
 });
 
 test("0.9 server draft can be saved and published through the BFF", async ({ page }) => {
