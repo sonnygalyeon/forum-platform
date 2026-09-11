@@ -524,3 +524,32 @@
 }
 
 .admin-observability-failure{margin-top:12px}.admin-observability-failure p{overflow-wrap:anywhere}
+
+
+/* Stage 1.1.2 — Social Graph UX */
+.social-graph-card{grid-template-columns:minmax(0,1fr) auto}
+.social-graph-person{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;gap:12px;min-width:0}
+.social-graph-copy{min-width:0}
+.social-graph-copy>strong,.social-graph-copy>span{display:block}
+.social-graph-copy>strong{font-size:11px}
+.social-graph-copy>span{margin:3px 0 6px;color:var(--subtle);font-size:8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.social-graph-context{display:flex;align-items:center;justify-content:flex-end;gap:10px;min-width:0}
+.social-graph-signals{display:flex;justify-content:flex-end;gap:5px;flex-wrap:wrap;max-width:360px}
+.social-graph-signals>span,.social-profile-summary>span,.social-profile-summary>a{display:inline-flex;align-items:center;gap:4px;border:1px solid var(--border);border-radius:999px;padding:4px 7px;color:var(--subtle);font-size:7px;line-height:1}
+.social-graph-signals>.soft-pill,.social-profile-summary>.soft-pill{border-color:color-mix(in srgb,var(--accent) 35%,var(--border));color:var(--accent)}
+.social-profile-summary{display:flex;gap:6px;flex-wrap:wrap;margin:9px 0}
+.social-graph-toolbar{display:flex;align-items:center;gap:12px;margin:0 0 12px}
+.social-graph-toolbar .text-input{flex:1}
+.social-graph-toolbar>span{color:var(--subtle);font-size:8px;white-space:nowrap}
+.social-graph-pagination{display:flex;align-items:center;justify-content:center;gap:12px;margin:16px 0 8px}
+.social-graph-pagination>span{color:var(--subtle);font-size:8px}
+.compact-button{padding:7px 9px;font-size:8px;white-space:nowrap}
+.page-head-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+@media(max-width:760px){
+  .social-graph-card{grid-template-columns:1fr}
+  .social-graph-context{justify-content:space-between;align-items:flex-end;flex-wrap:wrap}
+  .social-graph-signals{justify-content:flex-start;max-width:none}
+  .social-user-rep{grid-column:auto;text-align:left}
+  .social-graph-toolbar{align-items:stretch;flex-direction:column}
+  .page-head-actions{justify-content:flex-start}
+}
