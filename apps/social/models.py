@@ -80,3 +80,47 @@ class PublicationBookmark(models.Model):
             models.Index(fields=["user", "-created_at", "-id"], name="social_bookmark_user_idx"),
             models.Index(fields=["publication", "-created_at"], name="social_bookmark_pub_idx"),
         ]
+
+
+
+class PublicationReaction(models.Model):
+    class Kind(models.TextChoices):
+        HEART = "heart", "Heart"
+        INSIGHTFUL = "insightful", "Insightful"
+        USEFUL = "useful", "Useful"
+        CURIOUS = "curious", "Curious"
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="publication_reactions",
+    )
+    publication = models.ForeignKey(
+        Publication,
+        on_delete=models.CASCADE,
+        related_name="reaction_edges",
+    )
+    kind = models.CharField(max_length=16, choices=Kind.choices)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user", "publication"],
+                name="social_unique_publication_reaction",
+            ),
+        ]
+        indexes = [
+            models.Index(
+                fields=["publication", "kind"],
+                name="social_react_pub_kind_idx",
+            ),
+            models.Index(
+                fields=["user", "-updated_at"],
+                name="social_react_user_idx",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.user.nickname} -> {self.publication.public_id}: {self.kind}"
