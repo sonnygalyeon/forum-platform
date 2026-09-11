@@ -10,7 +10,7 @@ from apps.communities.models import Community, CommunityStaff
 from apps.discussions.models import Comment
 from apps.publications.models import Publication
 from apps.social.feed import viewer_interest_tag_ids
-from apps.social.models import CommunitySubscription, PublicationReaction, UserBlock, UserFollow, UserMute
+from apps.social.models import CommunitySubscription, UserBlock, UserFollow, UserMute
 from apps.users.models import User
 
 
