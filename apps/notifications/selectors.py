@@ -12,7 +12,7 @@ from apps.publications.selectors import publication_queryset
 from apps.social.models import CommunitySubscription, UserFollow
 
 
-def notification_queryset(user, *, category=None):
+def notification_queryset(user, *, category=None, include_engagement=True):
     queryset = (
         Notification.objects
         .filter(recipient=user)
@@ -28,6 +28,9 @@ def notification_queryset(user, *, category=None):
         .order_by("-created_at")
     )
 
+    if not include_engagement:
+        queryset = queryset.exclude(kind=NotificationEvent.Kind.PUBLICATION_REACTION)
+
     if category == CATEGORY_REPLIES:
         return queryset.filter(kind__in=REPLY_KINDS)
     if category == CATEGORY_MODERATION:
@@ -40,6 +43,7 @@ def notification_queryset(user, *, category=None):
     if category == CATEGORY_SOCIAL:
         return queryset.filter(
             Q(kind=NotificationEvent.Kind.NEW_FOLLOWER)
+            | Q(kind=NotificationEvent.Kind.PUBLICATION_REACTION)
             | Q(
                 kind=NotificationEvent.Kind.NEW_PUBLICATION,
                 publication__community__isnull=True,
