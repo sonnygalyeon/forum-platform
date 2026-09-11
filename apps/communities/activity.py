@@ -6,7 +6,7 @@ from django.db.models import Count, F, IntegerField, Q, Value
 from django.db.models.functions import Least
 from django.utils import timezone
 
-from apps.communities.models import Community
+from apps.communities.models import Community, CommunityStaff
 from apps.discussions.models import Comment
 from apps.publications.models import Publication
 from apps.social.feed import viewer_interest_tag_ids
@@ -178,15 +178,38 @@ def community_contributor_rows(community, *, viewer=None, days=ACTIVITY_WINDOW_D
     if hidden_ids:
         users = users.exclude(pk__in=hidden_ids)
 
+    users = list(users)
+    user_ids = [user.pk for user in users]
+    staff_roles = {
+        user_id: role
+        for user_id, role in CommunityStaff.objects.filter(
+            community=community,
+            user_id__in=user_ids,
+        ).values_list("user_id", "role")
+    }
+    subscriber_ids = set(
+        CommunitySubscription.objects.filter(
+            community=community,
+            user_id__in=user_ids,
+        ).values_list("user_id", flat=True)
+    )
+
     rows = []
     for user in users:
         publication_count = user.community_publication_count
         comment_count = user.community_comment_count
         accepted_count = user.community_accepted_answer_count
         score = publication_count * 4 + comment_count + accepted_count * 6
+        role = (
+            "owner"
+            if user.pk == community.owner_id
+            else staff_roles.get(user.pk)
+            or ("subscriber" if user.pk in subscriber_ids else None)
+        )
         rows.append(
             {
                 "user": user,
+                "role": role,
                 "publication_count": publication_count,
                 "comment_count": comment_count,
                 "accepted_answer_count": accepted_count,
