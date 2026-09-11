@@ -1,9 +1,11 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 
 import { clientApi } from "@/lib/client-api";
+
+export type EngagementSocketState = "rest" | "connecting" | "live" | "reconnecting";
 
 function websocketUrl(ticket: string, publicationId: string) {
   if (typeof window === "undefined") return "";
@@ -14,16 +16,21 @@ function websocketUrl(ticket: string, publicationId: string) {
   return `${base}?${params.toString()}`;
 }
 
-export function useEngagementSocket(publicationId: string, enabled: boolean) {
+export function useEngagementSocket(publicationId: string, enabled: boolean): EngagementSocketState {
   const qc = useQueryClient();
   const socketRef = useRef<WebSocket | null>(null);
   const retryRef = useRef(0);
   const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const heartbeatRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [state, setState] = useState<EngagementSocketState>(enabled ? "connecting" : "rest");
 
   useEffect(() => {
-    if (!enabled || !publicationId) return;
+    if (!enabled || !publicationId) {
+      setState("rest");
+      return;
+    }
     let cancelled = false;
+    setState("connecting");
 
     const reconcile = () => {
       void qc.invalidateQueries({ queryKey: ["publication-engagement", publicationId] });
@@ -39,6 +46,7 @@ export function useEngagementSocket(publicationId: string, enabled: boolean) {
 
     const scheduleReconnect = (connect: () => Promise<void>) => {
       if (cancelled) return;
+      setState("reconnecting");
       const delay = Math.min(750 * 2 ** retryRef.current++, 10000);
       retryTimerRef.current = setTimeout(() => void connect(), delay);
     };
@@ -52,7 +60,9 @@ export function useEngagementSocket(publicationId: string, enabled: boolean) {
         socketRef.current = socket;
 
         socket.onopen = () => {
+          if (cancelled) return;
           retryRef.current = 0;
+          setState("live");
           reconcile();
           stopHeartbeat();
           heartbeatRef.current = setInterval(() => {
@@ -105,4 +115,6 @@ export function useEngagementSocket(publicationId: string, enabled: boolean) {
       socketRef.current?.close();
     };
   }, [enabled, publicationId, qc]);
+
+  return state;
 }
