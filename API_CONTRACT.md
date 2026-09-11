@@ -120,6 +120,28 @@ Current reason codes include:
 The personalized feed uses explicit first-party relationships, inferred tag interests, engagement and freshness. Accounts without enough history fall back to freshness/engagement rather than receiving an empty feed.
 
 
+
+## Community activity
+
+Community activity is exposed through additive endpoints. Existing `/communities/` and `/communities/{id}/` response schemas remain unchanged.
+
+```text
+GET /api/v1/communities/{id}/activity/summary/
+GET /api/v1/communities/{id}/activity/
+GET /api/v1/communities/{id}/contributors/
+GET /api/v1/community-recommendations/
+```
+
+Activity summary is public for active communities and returns 7/30-day aggregate publication/comment counts, new subscriber count, active contributor count, an activity ordering score and top tags.
+
+The activity timeline combines published community publications and published comments. Contributor and timeline identity surfaces respect viewer block/mute state when authenticated.
+
+Community recommendations require authentication and are explainable. Signals include followed people already subscribed, matching interest tags, recent publications and recent discussion activity. Already-subscribed communities, communities owned by the viewer and communities owned by hidden users are excluded.
+
+Timeline, contributor and recommendation collections use page-number pagination with optional `page_size`, capped at 50.
+
+Community and contributor activity scores are local ordering/display signals only. They are not identity reputation or moderation trust scores.
+
 ## Social graph
 
 The 1.0 followers/following endpoints remain stable. Rich viewer-relative graph context is exposed through additive authenticated endpoints:
