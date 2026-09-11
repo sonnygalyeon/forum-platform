@@ -6,16 +6,28 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.communities.models import Community, CommunityStaff
+from apps.communities.activity import (
+    community_activity_summary,
+    community_activity_timeline,
+    community_contributor_rows,
+    community_top_tags,
+    recommended_community_rows,
+)
 from apps.communities.selectors import community_queryset_for_user
 from apps.communities.services import create_community
 from apps.social.services import subscribe_to_community, unsubscribe_from_community
 from apps.users.models import User
+from .pagination import CommunityActivityPagination
 from .serializers import (
     CommunityCreateSerializer,
     CommunitySerializer,
     CommunityStaffSerializer,
     CommunityStaffWriteSerializer,
     CommunityUpdateSerializer,
+    CommunityActivityItemSerializer,
+    CommunityActivitySummarySerializer,
+    CommunityContributorSerializer,
+    CommunityRecommendationSerializer,
 )
 
 
@@ -150,3 +162,61 @@ class CommunityStaffDetailView(APIView):
             return error
         edge.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+
+class CommunityActivitySummaryView(APIView):
+    permission_classes = [AllowAny]
+
+    def get_community(self, community_id):
+        return get_object_or_404(Community, public_id=community_id, is_active=True)
+
+    @extend_schema(
+        responses=CommunityActivitySummarySerializer,
+        summary="Get derived community activity summary",
+    )
+    def get(self, request, community_id):
+        community = self.get_community(community_id)
+        data = community_activity_summary(community)
+        data["top_tags"] = community_top_tags(community)
+        return Response(CommunityActivitySummarySerializer(data).data)
+
+
+class CommunityContributorsView(generics.GenericAPIView):
+    permission_classes = [AllowAny]
+    serializer_class = CommunityContributorSerializer
+    pagination_class = CommunityActivityPagination
+
+    @extend_schema(summary="List active community contributors")
+    def get(self, request, community_id):
+        community = get_object_or_404(Community, public_id=community_id, is_active=True)
+        rows = community_contributor_rows(community)
+        page = self.paginate_queryset(rows)
+        return self.get_paginated_response(self.get_serializer(page, many=True).data)
+
+
+class CommunityActivityTimelineView(generics.GenericAPIView):
+    permission_classes = [AllowAny]
+    serializer_class = CommunityActivityItemSerializer
+    pagination_class = CommunityActivityPagination
+
+    @extend_schema(summary="Get recent publication and discussion activity")
+    def get(self, request, community_id):
+        community = get_object_or_404(Community, public_id=community_id, is_active=True)
+        rows = community_activity_timeline(community)
+        page = self.paginate_queryset(rows)
+        return self.get_paginated_response(self.get_serializer(page, many=True).data)
+
+
+class CommunityRecommendationsView(generics.GenericAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = CommunityRecommendationSerializer
+    pagination_class = CommunityActivityPagination
+
+    @extend_schema(summary="Get explainable community recommendations")
+    def get(self, request):
+        rows = recommended_community_rows(request.user)
+        page = self.paginate_queryset(rows)
+        return self.get_paginated_response(
+            self.get_serializer(page, many=True, context={"request": request}).data
+        )
