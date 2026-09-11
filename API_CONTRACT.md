@@ -119,10 +119,6 @@ Current reason codes include:
 
 The personalized feed uses explicit first-party relationships, inferred tag interests, engagement and freshness. Accounts without enough history fall back to freshness/engagement rather than receiving an empty feed.
 
-
-
-
-
 ## Feed quality and feedback
 
 The authenticated `GET /api/v1/feed/for-you/` endpoint keeps its cursor-shaped `next / previous / results` response but 1.1.5 performs bounded sequence-aware reranking after the existing base candidate score.
@@ -163,6 +159,45 @@ Supported reaction kinds are `heart`, `insightful`, `useful`, and `curious`.
 The public engagement summary exposes aggregate reaction counts, bookmark count, published comment count and a bounded display/ranking engagement score. Authenticated viewers also receive `my_reaction` and `can_react`.
 
 Reaction notifications are a Notification Center-only addition. Legacy `/notifications/` and `/notifications/unread-count/` do not expose/count `publication_reaction`; center clients use `/notifications/center/`, `/notifications/center/unread-count/` and `/notifications/center/preferences/`.
+
+### Engagement realtime transport
+
+Authenticated clients may obtain the existing one-time WebSocket ticket from:
+
+```text
+POST /api/v1/messenger/ws-ticket/
+```
+
+and connect to:
+
+```text
+/ws/engagement/?ticket=<one-time-ticket>&publication=<publication-uuid>
+```
+
+The publication must exist and be published. The socket is scoped to one publication and is an invalidation transport only.
+
+On connect the server sends:
+
+```json
+{
+  "type": "engagement.ready",
+  "publication_id": "<uuid>"
+}
+```
+
+Committed reaction, bookmark, or comment changes may produce:
+
+```json
+{
+  "type": "engagement.changed",
+  "publication_id": "<uuid>",
+  "reason": "reaction"
+}
+```
+
+Current `reason` values are `reaction`, `bookmark`, and `comment`.
+
+Clients must treat the event as a prompt to reconcile the existing REST engagement/comment endpoints rather than as replacement state. WebSocket delivery is not durable; reconnect and visibility/focus reconciliation are expected fallback paths.
 
 ## Community activity
 
