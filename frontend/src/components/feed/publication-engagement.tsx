@@ -16,7 +16,7 @@ const reactions: Array<{ kind: PublicationReactionKind; symbol: string; label: s
 export function PublicationEngagementBar({ publicationId }: { publicationId: string }) {
   const { user } = useAuth();
   const qc = useQueryClient();
-  useEngagementSocket(publicationId, Boolean(user));
+  const realtimeState = useEngagementSocket(publicationId, Boolean(user));
 
   const query = useQuery({
     queryKey: ["publication-engagement", publicationId],
@@ -47,7 +47,7 @@ export function PublicationEngagementBar({ publicationId }: { publicationId: str
   const data = query.data;
 
   return (
-    <div className="publication-engagement" data-realtime={user ? "enabled" : "rest"}>
+    <div className="publication-engagement" data-realtime={realtimeState}>
       <div className="publication-reactions" aria-label="Реакции на публикацию">
         {reactions.map((item) => {
           const active = data.my_reaction === item.kind;
@@ -73,6 +73,7 @@ export function PublicationEngagementBar({ publicationId }: { publicationId: str
         <span>{data.reaction_total} реакций</span>
         <span>{data.comment_count} комментариев</span>
         <span>{data.bookmark_count} сохранений</span>
+        {user ? <span className={"engagement-live-state " + (realtimeState === "live" ? "live" : "")}>{realtimeState === "live" ? "● Live" : "↻ Sync"}</span> : null}
       </div>
       {reaction.isError ? <div className="form-error">{errorMessage(reaction.error)}</div> : null}
     </div>
