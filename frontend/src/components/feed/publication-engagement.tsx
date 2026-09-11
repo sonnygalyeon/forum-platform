@@ -1,6 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEngagementSocket } from "@/hooks/use-engagement-socket";
 import { clientApi, errorMessage } from "@/lib/client-api";
 import type { PublicationEngagement, PublicationReactionKind } from "@/lib/types";
 import { useAuth } from "@/providers/auth-provider";
@@ -15,6 +16,8 @@ const reactions: Array<{ kind: PublicationReactionKind; symbol: string; label: s
 export function PublicationEngagementBar({ publicationId }: { publicationId: string }) {
   const { user } = useAuth();
   const qc = useQueryClient();
+  useEngagementSocket(publicationId, Boolean(user));
+
   const query = useQuery({
     queryKey: ["publication-engagement", publicationId],
     queryFn: () => clientApi<PublicationEngagement>("/publications/" + publicationId + "/engagement/"),
@@ -44,7 +47,7 @@ export function PublicationEngagementBar({ publicationId }: { publicationId: str
   const data = query.data;
 
   return (
-    <div className="publication-engagement">
+    <div className="publication-engagement" data-realtime={user ? "enabled" : "rest"}>
       <div className="publication-reactions" aria-label="Реакции на публикацию">
         {reactions.map((item) => {
           const active = data.my_reaction === item.kind;
