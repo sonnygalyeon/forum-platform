@@ -92,6 +92,53 @@ export type Community = CommunityCompact & {
   staff_count?: number;
 };
 
+export type CommunityActivityTag = {
+  id: string;
+  name: string;
+  slug: string;
+  publication_count: number;
+};
+
+export type CommunityActivitySummary = {
+  publications_7d: number;
+  comments_7d: number;
+  new_subscribers_7d: number;
+  active_contributors_7d: number;
+  publications_30d: number;
+  comments_30d: number;
+  activity_score: number;
+  top_tags: CommunityActivityTag[];
+};
+
+export type CommunityContributor = {
+  user: User;
+  publication_count: number;
+  comment_count: number;
+  accepted_answer_count: number;
+  activity_score: number;
+};
+
+export type CommunityActivityItem = {
+  type: "publication" | "comment";
+  id: string;
+  created_at: string;
+  actor: User;
+  publication: { id: string; type: string; title: string };
+  comment: { id: string; kind: string; excerpt: string } | null;
+};
+
+export type CommunityRecommendationReason = { code: string; label: string };
+
+export type CommunityRecommendation = {
+  community: Community;
+  recommendation_score: number;
+  followed_member_count: number;
+  matching_tag_count: number;
+  recent_publication_count: number;
+  recent_comment_count: number;
+  recommendation_reasons: CommunityRecommendationReason[];
+};
+
 export type ContentBlock =
   | { type: "paragraph"; text: string }
   | { type: "quote"; text: string }
