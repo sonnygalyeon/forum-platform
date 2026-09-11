@@ -627,3 +627,13 @@
 .feed-feedback-menu>button small{margin-top:3px;color:var(--subtle);font-size:7px;line-height:1.35}
 .feed-feedback-undo{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px 9px;border:1px solid var(--border);border-radius:9px;background:var(--surface-2);font-size:8px}
 .feed-feedback-undo button{display:inline-flex;align-items:center;gap:4px;border:0;background:transparent;color:var(--accent);cursor:pointer;font:inherit;font-size:8px}
+
+.feed-quality-tools{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 12px;padding:8px 10px;border:1px solid var(--border);border-radius:10px;background:var(--surface-2)}
+.feed-quality-tools>span{color:var(--subtle);font-size:8px}
+.feed-preference-list{display:flex;flex-direction:column;gap:8px}
+.feed-preference-row{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:12px 13px;border:1px solid var(--border);border-radius:11px;background:var(--surface)}
+.feed-preference-row>div{min-width:0}
+.feed-preference-row strong,.feed-preference-row small{display:block}
+.feed-preference-row strong{margin-top:7px;font-size:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.feed-preference-row small{margin-top:4px;color:var(--subtle);font-size:7px}
+@media(max-width:620px){.feed-quality-tools,.feed-preference-row{align-items:flex-start;flex-direction:column}.feed-feedback-menu{position:fixed;left:12px;right:12px;top:auto;bottom:16px;width:auto}}
