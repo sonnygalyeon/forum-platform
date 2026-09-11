@@ -9,6 +9,7 @@ Implemented:
 - public 7/30-day community activity summary;
 - top community tags derived from published content;
 - active contributor ranking over the last 30 days;
+- contributor role context (owner/moderator/editor/subscriber);
 - recent publication/comment activity timeline;
 - viewer-aware block/mute filtering on identity-bearing activity surfaces;
 - explainable authenticated community recommendations;
@@ -78,7 +79,7 @@ comment/reply      +1
 accepted answer    +6
 ```
 
-The score is local to one community and one time window. It does not modify global user reputation.
+Each contributor row also exposes the user's current community role when applicable. The score is local to one community and one time window. It does not modify global user reputation.
 
 ## Community recommendations
 
