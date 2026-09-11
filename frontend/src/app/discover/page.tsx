@@ -28,7 +28,7 @@ export default function DiscoverPage() {
           <h1>Найти полезное без бесконечной ленты</h1>
           <p>{discovery.data?.personalized ? "Рекомендации учитывают ваши подписки, сообщества и темы, которые вы сохраняете или публикуете." : "Пока показываем свежие и активные материалы. После входа рекомендации станут персональными."}</p>
         </div>
-        <Link href="/search" className="secondary-button"><Compass size={15}/> Расширенный поиск</Link>
+        <div className="page-head-actions"><Link href="/people" className="secondary-button"><UsersRound size={15}/> Найти людей</Link><Link href="/search" className="secondary-button"><Compass size={15}/> Расширенный поиск</Link></div>
       </section>
 
       {discovery.isLoading ? <LoadingBlock/> : discovery.data ? (
