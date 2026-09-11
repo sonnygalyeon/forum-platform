@@ -190,7 +190,7 @@ class CommunityContributorsView(generics.GenericAPIView):
     @extend_schema(summary="List active community contributors")
     def get(self, request, community_id):
         community = get_object_or_404(Community, public_id=community_id, is_active=True)
-        rows = community_contributor_rows(community)
+        rows = community_contributor_rows(community, viewer=request.user)
         page = self.paginate_queryset(rows)
         return self.get_paginated_response(self.get_serializer(page, many=True).data)
 
@@ -203,7 +203,7 @@ class CommunityActivityTimelineView(generics.GenericAPIView):
     @extend_schema(summary="Get recent publication and discussion activity")
     def get(self, request, community_id):
         community = get_object_or_404(Community, public_id=community_id, is_active=True)
-        rows = community_activity_timeline(community)
+        rows = community_activity_timeline(community, viewer=request.user)
         page = self.paginate_queryset(rows)
         return self.get_paginated_response(self.get_serializer(page, many=True).data)
 
