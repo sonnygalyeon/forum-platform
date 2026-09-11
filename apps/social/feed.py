@@ -46,6 +46,7 @@ def viewer_interest_tag_ids(viewer) -> tuple[int, ...]:
                 publications__comments__author=viewer,
                 publications__comments__visibility="published",
             )
+            | Q(publications__reaction_edges__user=viewer)
         )
         .values_list("pk", flat=True)
         .distinct()[:MAX_INTEREST_TAGS]
@@ -121,6 +122,7 @@ def personalized_feed_queryset(viewer, *, interest_tag_ids=None):
         feed_subscribed_community=Exists(subscribed_community),
         feed_interest_matches=interest_matches,
         feed_bookmark_count=Count("bookmark_edges", distinct=True),
+        feed_reaction_count=Count("reaction_edges", distinct=True),
     )
 
     now = timezone.now()
@@ -151,8 +153,9 @@ def personalized_feed_queryset(viewer, *, interest_tag_ids=None):
     )
     engagement_score = Least(
         F("comment_count") * Value(2)
-        + F("feed_bookmark_count") * Value(3),
-        Value(30),
+        + F("feed_bookmark_count") * Value(3)
+        + F("feed_reaction_count") * Value(2),
+        Value(40),
     )
 
     return queryset.annotate(
