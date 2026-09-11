@@ -122,6 +122,30 @@ The personalized feed uses explicit first-party relationships, inferred tag inte
 
 
 
+
+## Feed quality and feedback
+
+The authenticated `GET /api/v1/feed/for-you/` endpoint keeps its cursor-shaped `next / previous / results` response but 1.1.5 performs bounded sequence-aware reranking after the existing base candidate score.
+
+Additive For You item fields include `feed_base_score`, `is_exploration`, and `quality_adjustments`. Existing `feed_score` remains the final ordering score for the returned sequence.
+
+Explicit feedback endpoints:
+
+```text
+GET    /api/v1/publications/{id}/feed-feedback/
+PUT    /api/v1/publications/{id}/feed-feedback/
+DELETE /api/v1/publications/{id}/feed-feedback/
+GET    /api/v1/feed/feedback/
+```
+
+Supported feedback reasons are `not_interested`, `too_repetitive`, and `already_seen`.
+
+All three suppress the exact publication from For You. `not_interested` supplies a bounded recent tag penalty to similar candidates; `too_repetitive` supplies bounded recent author/community penalties; `already_seen` does not generalize beyond the exact item.
+
+Feed feedback is viewer-private. It does not alter publication visibility, moderation state, identity reputation or community statistics.
+
+Latest and Following feeds retain their existing ranking semantics and do not apply FeedFeedback suppression.
+
 ## Engagement signals
 
 Publication reactions are additive in 1.1.4. Existing Publication response schemas remain unchanged.
