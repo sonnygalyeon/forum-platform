@@ -116,6 +116,7 @@ class CommunityActivityApiTests(TestCase):
             content_text="Question",
         )
         self._comment(author, topic, accepted=True)
+        CommunitySubscription.objects.create(user=author, community=self.community)
 
         response = self.client.get(
             f"/api/v1/communities/{self.community.public_id}/contributors/"
@@ -129,6 +130,7 @@ class CommunityActivityApiTests(TestCase):
         )
         self.assertEqual(row["publication_count"], 1)
         self.assertEqual(row["accepted_answer_count"], 1)
+        self.assertEqual(row["role"], "subscriber")
         self.assertGreaterEqual(row["activity_score"], 10)
         self.assertIsNotNone(publication.pk)
 
