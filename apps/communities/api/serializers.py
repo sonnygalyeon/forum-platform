@@ -81,3 +81,69 @@ class CommunityStaffSerializer(serializers.ModelSerializer):
 class CommunityStaffWriteSerializer(serializers.Serializer):
     user_id = serializers.UUIDField(required=False)
     role = serializers.ChoiceField(choices=CommunityStaff.Role.choices)
+
+
+
+class CommunityActivityTagSerializer(serializers.Serializer):
+    id = serializers.UUIDField(source="tags__public_id")
+    name = serializers.CharField(source="tags__name")
+    slug = serializers.CharField(source="tags__slug")
+    publication_count = serializers.IntegerField(min_value=0)
+
+
+class CommunityActivitySummarySerializer(serializers.Serializer):
+    publications_7d = serializers.IntegerField(min_value=0)
+    comments_7d = serializers.IntegerField(min_value=0)
+    new_subscribers_7d = serializers.IntegerField(min_value=0)
+    active_contributors_7d = serializers.IntegerField(min_value=0)
+    publications_30d = serializers.IntegerField(min_value=0)
+    comments_30d = serializers.IntegerField(min_value=0)
+    activity_score = serializers.IntegerField(min_value=0)
+    top_tags = CommunityActivityTagSerializer(many=True)
+
+
+class CommunityContributorSerializer(serializers.Serializer):
+    user = UserPublicSerializer(read_only=True)
+    publication_count = serializers.IntegerField(min_value=0)
+    comment_count = serializers.IntegerField(min_value=0)
+    accepted_answer_count = serializers.IntegerField(min_value=0)
+    activity_score = serializers.IntegerField(min_value=0)
+
+
+class CommunityActivityPublicationSerializer(serializers.Serializer):
+    id = serializers.UUIDField(source="public_id")
+    type = serializers.CharField(source="kind")
+    title = serializers.CharField()
+
+
+class CommunityActivityCommentSerializer(serializers.Serializer):
+    id = serializers.UUIDField(source="public_id")
+    kind = serializers.CharField()
+    excerpt = serializers.SerializerMethodField()
+
+    def get_excerpt(self, obj) -> str:
+        return (obj.content_text or "").strip()[:180]
+
+
+class CommunityActivityItemSerializer(serializers.Serializer):
+    type = serializers.ChoiceField(choices=["publication", "comment"])
+    id = serializers.UUIDField()
+    created_at = serializers.DateTimeField()
+    actor = UserPublicSerializer(read_only=True)
+    publication = CommunityActivityPublicationSerializer(read_only=True)
+    comment = CommunityActivityCommentSerializer(read_only=True, allow_null=True)
+
+
+class CommunityRecommendationReasonSerializer(serializers.Serializer):
+    code = serializers.CharField()
+    label = serializers.CharField()
+
+
+class CommunityRecommendationSerializer(serializers.Serializer):
+    community = CommunitySerializer(read_only=True)
+    recommendation_score = serializers.IntegerField(min_value=0)
+    followed_member_count = serializers.IntegerField(min_value=0)
+    matching_tag_count = serializers.IntegerField(min_value=0)
+    recent_publication_count = serializers.IntegerField(min_value=0)
+    recent_comment_count = serializers.IntegerField(min_value=0)
+    recommendation_reasons = CommunityRecommendationReasonSerializer(many=True)
