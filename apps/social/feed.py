@@ -113,7 +113,9 @@ def personalized_feed_queryset(viewer, *, interest_tag_ids=None):
 
     queryset = publication_queryset(viewer, hide_muted=True)
     queryset = _exclude_blocked_authors(queryset, viewer)
-    queryset = queryset.exclude(author=viewer).filter(
+    queryset = queryset.exclude(author=viewer).exclude(
+        feed_feedback_edges__user=viewer,
+    ).filter(
         Q(community__isnull=True) | Q(community__is_active=True)
     )
 
