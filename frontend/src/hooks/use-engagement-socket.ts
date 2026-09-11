@@ -22,15 +22,11 @@ export function useEngagementSocket(publicationId: string, enabled: boolean): En
   const retryRef = useRef(0);
   const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const heartbeatRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const [state, setState] = useState<EngagementSocketState>(enabled ? "connecting" : "rest");
+  const [socketState, setSocketState] = useState<Exclude<EngagementSocketState, "rest">>("connecting");
 
   useEffect(() => {
-    if (!enabled || !publicationId) {
-      setState("rest");
-      return;
-    }
+    if (!enabled || !publicationId) return;
     let cancelled = false;
-    setState("connecting");
 
     const reconcile = () => {
       void qc.invalidateQueries({ queryKey: ["publication-engagement", publicationId] });
@@ -46,7 +42,7 @@ export function useEngagementSocket(publicationId: string, enabled: boolean): En
 
     const scheduleReconnect = (connect: () => Promise<void>) => {
       if (cancelled) return;
-      setState("reconnecting");
+      setSocketState("reconnecting");
       const delay = Math.min(750 * 2 ** retryRef.current++, 10000);
       retryTimerRef.current = setTimeout(() => void connect(), delay);
     };
@@ -62,7 +58,7 @@ export function useEngagementSocket(publicationId: string, enabled: boolean): En
         socket.onopen = () => {
           if (cancelled) return;
           retryRef.current = 0;
-          setState("live");
+          setSocketState("live");
           reconcile();
           stopHeartbeat();
           heartbeatRef.current = setInterval(() => {
@@ -116,5 +112,5 @@ export function useEngagementSocket(publicationId: string, enabled: boolean): En
     };
   }, [enabled, publicationId, qc]);
 
-  return state;
+  return enabled && publicationId ? socketState : "rest";
 }
