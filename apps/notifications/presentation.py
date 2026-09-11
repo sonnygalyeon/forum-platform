@@ -24,7 +24,7 @@ REPLY_KINDS = {
 def notification_category(notification) -> str:
     if notification.kind in REPLY_KINDS:
         return CATEGORY_REPLIES
-    if notification.kind == NotificationEvent.Kind.NEW_FOLLOWER:
+    if notification.kind in {NotificationEvent.Kind.NEW_FOLLOWER, NotificationEvent.Kind.PUBLICATION_REACTION}:
         return CATEGORY_SOCIAL
     if notification.kind == NotificationEvent.Kind.NEW_PUBLICATION:
         return CATEGORY_COMMUNITIES if notification.publication_id and notification.publication.community_id else CATEGORY_SOCIAL
@@ -45,6 +45,8 @@ def notification_priority(notification) -> str:
         NotificationEvent.Kind.NEW_FOLLOWER,
     }:
         return "normal"
+    if notification.kind == NotificationEvent.Kind.PUBLICATION_REACTION:
+        return "low"
     return "low"
 
 
@@ -75,5 +77,6 @@ def notification_label(notification) -> str:
         NotificationEvent.Kind.ANSWER_ACCEPTED: "Ваш ответ принят",
         NotificationEvent.Kind.NEW_FOLLOWER: "Новый подписчик",
         NotificationEvent.Kind.MODERATION_UPDATE: "Обновление модерации",
+        NotificationEvent.Kind.PUBLICATION_REACTION: "Новая реакция на публикацию",
     }
     return labels.get(notification.kind, notification.kind.replace("_", " "))
