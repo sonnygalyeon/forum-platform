@@ -594,3 +594,17 @@
 @media(max-width:960px){.community-recommendation-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.community-activity-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:700px){.community-activity-grid,.community-recommendation-grid{grid-template-columns:1fr}.community-activity-shell{padding:12px}.community-recommendation-card footer{align-items:flex-start;flex-direction:column}}
 @media(max-width:430px){.community-activity-metrics{grid-template-columns:1fr}.community-timeline-item{grid-template-columns:auto minmax(0,1fr)}.community-timeline-item time{grid-column:2}}
+
+
+/* Stage 1.1.4 — Engagement Signals */
+.publication-engagement{margin-top:18px;padding-top:14px;border-top:1px solid var(--border)}
+.publication-reactions{display:flex;gap:7px;flex-wrap:wrap}
+.reaction-button{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border);border-radius:999px;background:var(--surface-2);padding:7px 10px;color:var(--subtle);font:inherit;font-size:8px;cursor:pointer;transition:.15s ease}
+.reaction-button:hover:not(:disabled){border-color:color-mix(in srgb,var(--accent) 38%,var(--border));color:var(--text);transform:translateY(-1px)}
+.reaction-button.active{border-color:color-mix(in srgb,var(--accent) 55%,var(--border));background:color-mix(in srgb,var(--accent) 9%,var(--surface));color:var(--accent)}
+.reaction-button:disabled{cursor:not-allowed;opacity:.55}
+.reaction-button>span:first-child{font-size:13px;line-height:1}
+.reaction-button b{min-width:12px;text-align:center;color:inherit}
+.engagement-summary{display:flex;gap:12px;flex-wrap:wrap;margin-top:9px;color:var(--subtle);font-size:8px}
+.feed-engagement-inline{display:flex;align-items:center;gap:10px}
+@media(max-width:560px){.reaction-button{padding:7px 8px}.reaction-button>span:nth-child(2){display:none}}
