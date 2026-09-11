@@ -21,6 +21,7 @@ class NotificationPreference(models.Model):
     accepted_answers = models.BooleanField(default=True)
     new_followers = models.BooleanField(default=True)
     moderation_updates = models.BooleanField(default=True)
+    publication_reactions = models.BooleanField(default=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
@@ -35,6 +36,7 @@ class NotificationEvent(models.Model):
         ANSWER_ACCEPTED = "answer_accepted", "Answer accepted"
         NEW_FOLLOWER = "new_follower", "New follower"
         MODERATION_UPDATE = "moderation_update", "Moderation update"
+        PUBLICATION_REACTION = "publication_reaction", "Publication reaction"
 
     class Status(models.TextChoices):
         PENDING = "pending", "Pending"
