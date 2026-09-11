@@ -17,6 +17,8 @@ from .views import (
     SocialGraphMutualsView,
     SocialRelationshipSummaryView,
     SocialRecommendationsView,
+    PublicationEngagementView,
+    PublicationReactionView,
 )
 
 
@@ -37,4 +39,6 @@ urlpatterns = [
     path("users/me/mutes/", MyMutedUsersView.as_view(), name="my-mutes"),
     path("users/me/bookmarks/", MyBookmarksView.as_view(), name="my-bookmarks"),
     path("publications/<uuid:publication_id>/bookmark/", PublicationBookmarkView.as_view(), name="publication-bookmark"),
+    path("publications/<uuid:publication_id>/engagement/", PublicationEngagementView.as_view(), name="publication-engagement"),
+    path("publications/<uuid:publication_id>/reaction/", PublicationReactionView.as_view(), name="publication-reaction"),
 ]
