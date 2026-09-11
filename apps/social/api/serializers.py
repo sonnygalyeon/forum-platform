@@ -88,7 +88,12 @@ class FeedPublicationSerializer(PublicationListSerializer):
                     "label": "По интересу: " + ", ".join(matched_names),
                 })
 
-        if getattr(obj, "comment_count", 0) >= 4:
+        if getattr(obj, "feed_reaction_count", 0) >= 4:
+            reasons.append({
+                "code": "reacted",
+                "label": "Получает реакции",
+            })
+        elif getattr(obj, "comment_count", 0) >= 4:
             reasons.append({
                 "code": "active_discussion",
                 "label": "Активно обсуждают",
