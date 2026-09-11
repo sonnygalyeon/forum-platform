@@ -47,7 +47,7 @@ export function FeedFeedbackControl({ publicationId }: { publicationId: string }
         body: JSON.stringify({ reason }),
       },
     ),
-    onSuccess: (data) => {
+    onSuccess: () => {
       setOpen(false);
       removeFromCachedFeed();
       void qc.invalidateQueries({ queryKey: ["home-feed"] });
