@@ -14,10 +14,19 @@ from apps.social.feed import (
     viewer_interest_tag_ids,
 )
 from apps.social.models import PublicationBookmark, UserBlock, UserFollow, UserMute
+from apps.social.graph import (
+    blocked_user_ids_for,
+    connection_rows,
+    graph_target_is_available,
+    mutual_rows,
+    mutual_user_queryset,
+    recommendation_rows,
+    relationship_summary,
+)
 from apps.social.services import block_user, follow_user, mute_user, unblock_user, unfollow_user, unmute_user
 from apps.users.models import User
 
-from .pagination import PersonalizedFeedCursorPagination
+from .pagination import PersonalizedFeedCursorPagination, SocialGraphPageNumberPagination
 from .serializers import (
     BookmarkStateSerializer,
     BlockedUserSerializer,
@@ -25,6 +34,9 @@ from .serializers import (
     FollowerSerializer,
     FollowingSerializer,
     MutedUserSerializer,
+    SocialConnectionSerializer,
+    SocialRecommendationSerializer,
+    SocialRelationshipSummarySerializer,
 )
 
 
@@ -196,3 +208,137 @@ class PersonalizedFeedView(generics.ListAPIView):
         context = super().get_serializer_context()
         context["feed_interest_tag_ids"] = self._interest_tag_ids()
         return context
+
+
+
+def _social_graph_target(request, user_id):
+    target = get_object_or_404(User, public_id=user_id, is_active=True)
+    if not graph_target_is_available(request.user, target):
+        from rest_framework.exceptions import NotFound
+
+        raise NotFound("Social graph is unavailable for this user.")
+    return target
+
+
+class SocialGraphFollowersView(generics.GenericAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = SocialConnectionSerializer
+    pagination_class = SocialGraphPageNumberPagination
+
+    @extend_schema(summary="List followers with viewer-relative social graph context")
+    def get(self, request, user_id):
+        target = _social_graph_target(request, user_id)
+        blocked_ids = blocked_user_ids_for(request.user)
+        queryset = (
+            UserFollow.objects.filter(
+                following=target,
+                follower__is_active=True,
+            )
+            .select_related(
+                "follower",
+                "follower__avatar_asset",
+                "follower__banner_asset",
+                "follower__identity_profile__equipped_frame",
+            )
+            .order_by("-created_at", "-id")
+        )
+        if blocked_ids:
+            queryset = queryset.exclude(follower_id__in=blocked_ids)
+
+        query = request.query_params.get("q", "").strip()
+        if query:
+            queryset = queryset.filter(
+                Q(follower__nickname__icontains=query)
+                | Q(follower__first_name__icontains=query)
+                | Q(follower__last_name__icontains=query)
+            )
+
+        page = self.paginate_queryset(queryset)
+        rows = connection_rows(request.user, page, user_attr="follower")
+        return self.get_paginated_response(self.get_serializer(rows, many=True).data)
+
+
+class SocialGraphFollowingView(generics.GenericAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = SocialConnectionSerializer
+    pagination_class = SocialGraphPageNumberPagination
+
+    @extend_schema(summary="List followed users with viewer-relative social graph context")
+    def get(self, request, user_id):
+        target = _social_graph_target(request, user_id)
+        blocked_ids = blocked_user_ids_for(request.user)
+        queryset = (
+            UserFollow.objects.filter(
+                follower=target,
+                following__is_active=True,
+            )
+            .select_related(
+                "following",
+                "following__avatar_asset",
+                "following__banner_asset",
+                "following__identity_profile__equipped_frame",
+            )
+            .order_by("-created_at", "-id")
+        )
+        if blocked_ids:
+            queryset = queryset.exclude(following_id__in=blocked_ids)
+
+        query = request.query_params.get("q", "").strip()
+        if query:
+            queryset = queryset.filter(
+                Q(following__nickname__icontains=query)
+                | Q(following__first_name__icontains=query)
+                | Q(following__last_name__icontains=query)
+            )
+
+        page = self.paginate_queryset(queryset)
+        rows = connection_rows(request.user, page, user_attr="following")
+        return self.get_paginated_response(self.get_serializer(rows, many=True).data)
+
+
+class SocialGraphMutualsView(generics.GenericAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = SocialConnectionSerializer
+    pagination_class = SocialGraphPageNumberPagination
+
+    @extend_schema(summary="List accounts followed by both viewer and target user")
+    def get(self, request, user_id):
+        target = _social_graph_target(request, user_id)
+        queryset = mutual_user_queryset(request.user, target)
+
+        query = request.query_params.get("q", "").strip()
+        if query:
+            queryset = queryset.filter(
+                Q(nickname__icontains=query)
+                | Q(first_name__icontains=query)
+                | Q(last_name__icontains=query)
+            )
+
+        page = self.paginate_queryset(queryset)
+        rows = mutual_rows(request.user, page)
+        return self.get_paginated_response(self.get_serializer(rows, many=True).data)
+
+
+class SocialRelationshipSummaryView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        responses=SocialRelationshipSummarySerializer,
+        summary="Get viewer-relative relationship summary",
+    )
+    def get(self, request, user_id):
+        target = get_object_or_404(User, public_id=user_id, is_active=True)
+        data = relationship_summary(request.user, target)
+        return Response(SocialRelationshipSummarySerializer(data).data)
+
+
+class SocialRecommendationsView(generics.GenericAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = SocialRecommendationSerializer
+    pagination_class = SocialGraphPageNumberPagination
+
+    @extend_schema(summary="Get explainable people recommendations")
+    def get(self, request):
+        rows = recommendation_rows(request.user)
+        page = self.paginate_queryset(rows)
+        return self.get_paginated_response(self.get_serializer(page, many=True).data)
