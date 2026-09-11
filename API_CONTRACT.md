@@ -119,6 +119,23 @@ Current reason codes include:
 
 The personalized feed uses explicit first-party relationships, inferred tag interests, engagement and freshness. Accounts without enough history fall back to freshness/engagement rather than receiving an empty feed.
 
+
+## Social graph
+
+The 1.0 followers/following endpoints remain stable. Rich viewer-relative graph context is exposed through additive authenticated endpoints:
+
+```text
+GET /api/v1/social/users/{id}/summary/
+GET /api/v1/social/users/{id}/followers/
+GET /api/v1/social/users/{id}/following/
+GET /api/v1/social/users/{id}/mutuals/
+GET /api/v1/social/recommendations/
+```
+
+Expanded graph lists use page-number pagination and support optional `q` search. They include viewer-relative fields such as mutual-follow state, common-follow count, shared-community count and shared-interest count.
+
+People recommendations are explainable and derive from explicit follow relationships, community subscriptions, publication tags, discussion intersections and recent activity. Blocked users and viewer-muted users are excluded. The recommendation score is an ordering implementation detail and must not be presented as user reputation or personal value.
+
 ## Notification center
 
 The stable 1.0 notification endpoints remain available:
