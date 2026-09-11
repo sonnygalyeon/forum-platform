@@ -121,6 +121,25 @@ The personalized feed uses explicit first-party relationships, inferred tag inte
 
 
 
+
+## Engagement signals
+
+Publication reactions are additive in 1.1.4. Existing Publication response schemas remain unchanged.
+
+```text
+GET    /api/v1/publications/{id}/engagement/
+PUT    /api/v1/publications/{id}/reaction/
+DELETE /api/v1/publications/{id}/reaction/
+```
+
+Each account may hold at most one reaction per publication. Replacing the reaction does not increase the aggregate count. Authors cannot react to their own publications, and reactions are unavailable across a block in either direction.
+
+Supported reaction kinds are `heart`, `insightful`, `useful`, and `curious`.
+
+The public engagement summary exposes aggregate reaction counts, bookmark count, published comment count and a bounded display/ranking engagement score. Authenticated viewers also receive `my_reaction` and `can_react`.
+
+Reaction notifications are a Notification Center-only addition. Legacy `/notifications/` and `/notifications/unread-count/` do not expose/count `publication_reaction`; center clients use `/notifications/center/`, `/notifications/center/unread-count/` and `/notifications/center/preferences/`.
+
 ## Community activity
 
 Community activity is exposed through additive endpoints. Existing `/communities/` and `/communities/{id}/` response schemas remain unchanged.
