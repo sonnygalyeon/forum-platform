@@ -12,6 +12,11 @@ from .views import (
     UserFollowingView,
     UserFollowView,
     UserMuteView,
+    SocialGraphFollowersView,
+    SocialGraphFollowingView,
+    SocialGraphMutualsView,
+    SocialRelationshipSummaryView,
+    SocialRecommendationsView,
 )
 
 
@@ -21,6 +26,11 @@ urlpatterns = [
     path("users/<uuid:user_id>/follow/", UserFollowView.as_view(), name="user-follow"),
     path("users/<uuid:user_id>/block/", UserBlockView.as_view(), name="user-block"),
     path("users/<uuid:user_id>/mute/", UserMuteView.as_view(), name="user-mute"),
+    path("social/users/<uuid:user_id>/followers/", SocialGraphFollowersView.as_view(), name="social-graph-followers"),
+    path("social/users/<uuid:user_id>/following/", SocialGraphFollowingView.as_view(), name="social-graph-following"),
+    path("social/users/<uuid:user_id>/mutuals/", SocialGraphMutualsView.as_view(), name="social-graph-mutuals"),
+    path("social/users/<uuid:user_id>/summary/", SocialRelationshipSummaryView.as_view(), name="social-relationship-summary"),
+    path("social/recommendations/", SocialRecommendationsView.as_view(), name="social-recommendations"),
     path("users/<uuid:user_id>/followers/", UserFollowersView.as_view(), name="user-followers"),
     path("users/<uuid:user_id>/following/", UserFollowingView.as_view(), name="user-following"),
     path("users/me/blocks/", MyBlockedUsersView.as_view(), name="my-blocks"),
