@@ -404,7 +404,7 @@ def recommendation_rows(viewer) -> list[dict]:
         if interaction_count:
             reasons.append(
                 {
-                    "code": "engagement_interaction",
+                    "code": "discussion_interaction",
                     "label": "Пересекались в обсуждениях или реакциях",
                 }
             )
