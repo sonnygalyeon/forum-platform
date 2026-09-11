@@ -6,10 +6,11 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.core.throttling import SocialActionThrottle
+from apps.core.throttling import EngagementActionThrottle, SocialActionThrottle
 from apps.publications.api.serializers import PublicationListSerializer
 from apps.publications.models import Publication
 from apps.publications.selectors import publication_queryset
+from apps.social.engagement import publication_engagement_summary, remove_publication_reaction, set_publication_reaction
 from apps.social.feed import (
     following_feed_queryset,
     personalized_feed_queryset,
@@ -39,6 +40,8 @@ from .serializers import (
     SocialConnectionSerializer,
     SocialRecommendationSerializer,
     SocialRelationshipSummarySerializer,
+    PublicationEngagementSerializer,
+    PublicationReactionWriteSerializer,
 )
 
 
@@ -345,3 +348,74 @@ class SocialRecommendationsView(generics.GenericAPIView):
         rows = recommendation_rows(request.user)
         page = self.paginate_queryset(rows)
         return self.get_paginated_response(self.get_serializer(page, many=True).data)
+
+
+
+class PublicationEngagementView(APIView):
+    permission_classes = [AllowAny]
+
+    @extend_schema(
+        responses=PublicationEngagementSerializer,
+        summary="Get publication engagement summary",
+    )
+    def get(self, request, publication_id):
+        publication = get_object_or_404(
+            Publication,
+            public_id=publication_id,
+            visibility=Publication.Visibility.PUBLISHED,
+        )
+        data = publication_engagement_summary(
+            publication=publication,
+            viewer=request.user,
+        )
+        return Response(PublicationEngagementSerializer(data).data)
+
+
+class PublicationReactionView(APIView):
+    permission_classes = [IsAuthenticated]
+    throttle_classes = [EngagementActionThrottle]
+
+    def get_publication(self, publication_id):
+        return get_object_or_404(
+            Publication,
+            public_id=publication_id,
+            visibility=Publication.Visibility.PUBLISHED,
+        )
+
+    @extend_schema(
+        request=PublicationReactionWriteSerializer,
+        responses={200: PublicationEngagementSerializer},
+        summary="Set or replace my publication reaction",
+    )
+    def put(self, request, publication_id):
+        serializer = PublicationReactionWriteSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        publication = self.get_publication(publication_id)
+        try:
+            set_publication_reaction(
+                user=request.user,
+                publication=publication,
+                kind=serializer.validated_data["kind"],
+            )
+        except ValueError as exc:
+            raise serializers.ValidationError({"detail": str(exc)}) from exc
+
+        data = publication_engagement_summary(
+            publication=publication,
+            viewer=request.user,
+        )
+        return Response(PublicationEngagementSerializer(data).data)
+
+    @extend_schema(
+        request=None,
+        responses={200: PublicationEngagementSerializer},
+        summary="Remove my publication reaction",
+    )
+    def delete(self, request, publication_id):
+        publication = self.get_publication(publication_id)
+        remove_publication_reaction(user=request.user, publication=publication)
+        data = publication_engagement_summary(
+            publication=publication,
+            viewer=request.user,
+        )
+        return Response(PublicationEngagementSerializer(data).data)
