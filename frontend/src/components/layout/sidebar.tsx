@@ -19,6 +19,7 @@ export function Sidebar() {
   const { user } = useAuth();
   const items = user ? [
     ...publicItems,
+    { href: "/people", label: "Люди", icon: UserRound },
     { href: "/new", label: "Создать", icon: PlusSquare },
     { href: "/saved", label: "Сохранённое", icon: Bookmark },
     { href: "/drafts", label: "Черновики", icon: FileEdit },
