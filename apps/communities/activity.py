@@ -10,7 +10,7 @@ from apps.communities.models import Community, CommunityStaff
 from apps.discussions.models import Comment
 from apps.publications.models import Publication
 from apps.social.feed import viewer_interest_tag_ids
-from apps.social.models import CommunitySubscription, UserBlock, UserFollow, UserMute
+from apps.social.models import CommunitySubscription, PublicationReaction, UserBlock, UserFollow, UserMute
 from apps.users.models import User
 
 
@@ -355,6 +355,14 @@ def recommended_community_rows(viewer) -> list[dict]:
                 ),
                 distinct=True,
             ),
+            recent_reaction_count=Count(
+                "publications__reaction_edges",
+                filter=Q(
+                    publications__visibility=Publication.Visibility.PUBLISHED,
+                    publications__reaction_edges__created_at__gte=week,
+                ),
+                distinct=True,
+            ),
         )
         .annotate(
             recommendation_score=(
@@ -362,6 +370,7 @@ def recommended_community_rows(viewer) -> list[dict]:
                 + Least(F("matching_tag_count"), Value(4)) * Value(10)
                 + Least(F("recent_publication_count"), Value(10)) * Value(2)
                 + Least(F("recent_comment_count"), Value(20))
+                + Least(F("recent_reaction_count"), Value(20))
             )
         )
         .order_by(
@@ -405,6 +414,13 @@ def recommended_community_rows(viewer) -> list[dict]:
                 {
                     "code": "active_discussions",
                     "label": "Активные обсуждения",
+                }
+            )
+        if community.recent_reaction_count >= 4:
+            reasons.append(
+                {
+                    "code": "community_reactions",
+                    "label": "Публикации получают реакции",
                 }
             )
         if not reasons:
