@@ -11,6 +11,16 @@ from apps.notifications.presentation import (
 from apps.users.api.serializers import UserPublicSerializer
 
 
+LEGACY_NOTIFICATION_KIND_CHOICES = [
+    "new_publication",
+    "publication_response",
+    "comment_reply",
+    "answer_accepted",
+    "new_follower",
+    "moderation_update",
+]
+
+
 class NotificationPublicationSerializer(serializers.Serializer):
     id = serializers.UUIDField()
     type = serializers.CharField()
@@ -27,6 +37,7 @@ class NotificationSerializer(serializers.ModelSerializer):
     """Stable 1.0 notification response contract."""
 
     id = serializers.UUIDField(source="public_id", read_only=True)
+    kind = serializers.ChoiceField(choices=LEGACY_NOTIFICATION_KIND_CHOICES, read_only=True)
     actor = UserPublicSerializer(read_only=True)
     is_read = serializers.SerializerMethodField()
     publication = serializers.SerializerMethodField()
@@ -77,6 +88,7 @@ class NotificationSerializer(serializers.ModelSerializer):
 class NotificationCenterSerializer(NotificationSerializer):
     """Additive 1.1 center representation used by the list endpoint only."""
 
+    kind = serializers.CharField(read_only=True)
     category = serializers.SerializerMethodField()
     priority = serializers.SerializerMethodField()
     target_url = serializers.SerializerMethodField()
@@ -117,3 +129,11 @@ class NotificationPreferenceSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
         read_only_fields = ["updated_at"]
+
+
+
+class NotificationCenterPreferenceSerializer(NotificationPreferenceSerializer):
+    class Meta(NotificationPreferenceSerializer.Meta):
+        fields = NotificationPreferenceSerializer.Meta.fields + [
+            "publication_reactions",
+        ]
