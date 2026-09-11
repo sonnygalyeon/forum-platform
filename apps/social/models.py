@@ -124,3 +124,46 @@ class PublicationReaction(models.Model):
 
     def __str__(self):
         return f"{self.user.nickname} -> {self.publication.public_id}: {self.kind}"
+
+
+
+class FeedFeedback(models.Model):
+    class Reason(models.TextChoices):
+        NOT_INTERESTED = "not_interested", "Not interested"
+        TOO_REPETITIVE = "too_repetitive", "Too repetitive"
+        ALREADY_SEEN = "already_seen", "Already seen"
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="feed_feedback",
+    )
+    publication = models.ForeignKey(
+        Publication,
+        on_delete=models.CASCADE,
+        related_name="feed_feedback_edges",
+    )
+    reason = models.CharField(max_length=24, choices=Reason.choices)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user", "publication"],
+                name="social_unique_feed_feedback",
+            ),
+        ]
+        indexes = [
+            models.Index(
+                fields=["user", "-updated_at"],
+                name="social_feedfb_user_idx",
+            ),
+            models.Index(
+                fields=["publication", "-updated_at"],
+                name="social_feedfb_pub_idx",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.user.nickname} -> {self.publication.public_id}: {self.reason}"
