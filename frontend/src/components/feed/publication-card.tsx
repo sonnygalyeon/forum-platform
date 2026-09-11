@@ -33,7 +33,7 @@ export function PublicationCard({ publication, feedFeedback = false }: { publica
           </div>
         ) : null}
 
-        <div className="feed-card-topline">{feedFeedback ? <FeedFeedbackControl publicationId={publication.id}/> : null}</div>
+        {feedFeedback ? <div className="feed-card-topline"><FeedFeedbackControl publicationId={publication.id}/></div> : null}
 
         <div className="meta-row author-meta">
           <Link href={`/users/${publication.author.id}`} className="author-link">
