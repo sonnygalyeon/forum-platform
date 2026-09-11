@@ -214,6 +214,44 @@ export type NotificationPreferences = {
 
 export type SocialUserEdge = { user: User; followed_at?: string; blocked_at?: string; muted_at?: string };
 
+export type SocialGraphConnection = {
+  user: User;
+  followed_at: string | null;
+  is_following: boolean;
+  follows_you: boolean;
+  is_mutual: boolean;
+  mutual_count: number;
+  shared_community_count: number;
+  shared_tag_count: number;
+};
+
+export type SocialRecommendationReason = { code: string; label: string };
+
+export type SocialRecommendation = SocialGraphConnection & {
+  interaction_count: number;
+  active_recently: boolean;
+  recommendation_score: number;
+  recommendation_reasons: SocialRecommendationReason[];
+};
+
+export type SocialRelationshipSummary = {
+  is_following: boolean;
+  follows_you: boolean;
+  is_mutual: boolean;
+  is_muted: boolean;
+  can_follow: boolean;
+  mutual_count: number;
+  shared_community_count: number;
+  shared_tag_count: number;
+};
+
+export type Page<T> = {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: T[];
+};
+
 export type CursorPage<T> = {
   next: string | null;
   previous: string | null;
