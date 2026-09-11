@@ -103,3 +103,48 @@ test("mobile messenger does not overflow horizontally", async ({ page }) => {
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   expect(overflow).toBeLessThanOrEqual(1);
 });
+
+
+test("For You feedback hides an item and can restore it", async ({ page }) => {
+  await registerQaUser(page, "feed-author");
+  const title = `Feed quality ${Date.now()}`;
+
+  const created = await page.evaluate(async ({ title }) => {
+    const response = await fetch("/api/forum/publications", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "same-origin",
+      body: JSON.stringify({
+        type: "post",
+        title,
+        content: [{ type: "paragraph", text: "Feed quality feedback smoke." }],
+        tags: ["feed-quality", "diversity"],
+      }),
+    });
+    return { status: response.status, body: await response.json() };
+  }, { title });
+  expect(created.status).toBe(201);
+
+  await page.context().clearCookies();
+  await page.evaluate(() => {
+    localStorage.clear();
+    sessionStorage.clear();
+  });
+
+  await registerQaUser(page, "feed-viewer");
+  await page.goto("/");
+
+  const card = page.locator("article.topic-card").filter({ hasText: title });
+  await expect(card).toBeVisible({ timeout: 10_000 });
+  await card.getByRole("button", { name: "Настроить ленту" }).click();
+  await card.getByRole("button", { name: /Уже видел/ }).click();
+  await expect(page.getByText(title, { exact: true })).toHaveCount(0);
+
+  await page.goto("/feed/preferences");
+  await expect(page.getByText(title, { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Вернуть" }).click();
+  await expect(page.getByText(title, { exact: true })).toHaveCount(0);
+
+  await page.goto("/");
+  await expect(page.getByText(title, { exact: true })).toBeVisible({ timeout: 10_000 });
+});
