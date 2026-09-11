@@ -112,6 +112,7 @@ export type CommunityActivitySummary = {
 
 export type CommunityContributor = {
   user: User;
+  role: CommunityRole;
   publication_count: number;
   comment_count: number;
   accepted_answer_count: number;
