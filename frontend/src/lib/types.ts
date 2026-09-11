@@ -140,6 +140,18 @@ export type CommunityRecommendation = {
   recommendation_reasons: CommunityRecommendationReason[];
 };
 
+export type PublicationReactionKind = "heart" | "insightful" | "useful" | "curious";
+
+export type PublicationEngagement = {
+  reaction_total: number;
+  reactions: Record<PublicationReactionKind, number>;
+  bookmark_count: number;
+  comment_count: number;
+  engagement_score: number;
+  my_reaction: PublicationReactionKind | null;
+  can_react: boolean;
+};
+
 export type ContentBlock =
   | { type: "paragraph"; text: string }
   | { type: "quote"; text: string }
