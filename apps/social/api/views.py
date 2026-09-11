@@ -6,6 +6,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.core.throttling import SocialActionThrottle
 from apps.publications.api.serializers import PublicationListSerializer
 from apps.publications.models import Publication
 from apps.publications.selectors import publication_queryset
@@ -47,6 +48,7 @@ from .serializers import (
 )
 class UserFollowView(APIView):
     permission_classes = [IsAuthenticated]
+    throttle_classes = [SocialActionThrottle]
 
     def get_target(self, user_id):
         return get_object_or_404(User, public_id=user_id, is_active=True)
