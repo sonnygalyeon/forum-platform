@@ -346,11 +346,12 @@ def recommended_community_rows(viewer) -> list[dict]:
             "-recent_publication_count",
             "-subscriber_count",
             "name",
-        )[:RECOMMENDATION_LIMIT]
+        )
     )
 
     if hidden_ids:
         queryset = queryset.exclude(owner_id__in=hidden_ids)
+    queryset = queryset[:RECOMMENDATION_LIMIT]
 
     rows = []
     for community in queryset:
