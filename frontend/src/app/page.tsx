@@ -1,8 +1,9 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { FilePlus2, Sparkles } from "lucide-react";
+import { FilePlus2, SlidersHorizontal, Sparkles } from "lucide-react";
 import { useState } from "react";
+import Link from "next/link";
 
 import { PublicationCard } from "@/components/feed/publication-card";
 import { AppShell } from "@/components/layout/app-shell";
@@ -90,6 +91,13 @@ export default function HomePage() {
           >
             Последние
           </button>
+        </div>
+      ) : null}
+
+      {user && effectiveMode === "for-you" ? (
+        <div className="feed-quality-tools">
+          <span>Лента чередует знакомые источники и контролируемое исследование новых.</span>
+          <Link href="/feed/preferences" className="secondary-button compact-button"><SlidersHorizontal size={14}/>Настройки ленты</Link>
         </div>
       ) : null}
 
