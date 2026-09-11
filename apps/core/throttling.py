@@ -7,3 +7,7 @@ class AuthRateThrottle(UserRateThrottle):
 
 class UploadRateThrottle(UserRateThrottle):
     scope = "uploads"
+
+
+class SocialActionThrottle(UserRateThrottle):
+    scope = "social_actions"
