@@ -11,3 +11,8 @@ class UploadRateThrottle(UserRateThrottle):
 
 class SocialActionThrottle(UserRateThrottle):
     scope = "social_actions"
+
+
+
+class EngagementActionThrottle(UserRateThrottle):
+    scope = "engagement_actions"
