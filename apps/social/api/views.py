@@ -13,10 +13,14 @@ from apps.publications.selectors import publication_queryset
 from apps.social.engagement import publication_engagement_summary, remove_publication_reaction, set_publication_reaction
 from apps.social.feed import (
     following_feed_queryset,
-    personalized_feed_queryset,
     viewer_interest_tag_ids,
 )
-from apps.social.models import PublicationBookmark, UserBlock, UserFollow, UserMute
+from apps.social.feed_quality import (
+    quality_reranked_feed,
+    remove_feed_feedback,
+    set_feed_feedback,
+)
+from apps.social.models import FeedFeedback, PublicationBookmark, UserBlock, UserFollow, UserMute
 from apps.social.graph import (
     blocked_user_ids_for,
     connection_rows,
@@ -29,7 +33,7 @@ from apps.social.graph import (
 from apps.social.services import block_user, follow_user, mute_user, unblock_user, unfollow_user, unmute_user
 from apps.users.models import User
 
-from .pagination import PersonalizedFeedCursorPagination, SocialGraphPageNumberPagination
+from .pagination import QualityFeedCursorPagination, SocialGraphPageNumberPagination
 from .serializers import (
     BookmarkStateSerializer,
     BlockedUserSerializer,
@@ -42,6 +46,8 @@ from .serializers import (
     SocialRelationshipSummarySerializer,
     PublicationEngagementSerializer,
     PublicationReactionWriteSerializer,
+    FeedFeedbackStateSerializer,
+    FeedFeedbackWriteSerializer,
 )
 
 
@@ -197,7 +203,7 @@ class FollowingFeedView(generics.ListAPIView):
 class PersonalizedFeedView(generics.ListAPIView):
     permission_classes = [IsAuthenticated]
     serializer_class = FeedPublicationSerializer
-    pagination_class = PersonalizedFeedCursorPagination
+    pagination_class = QualityFeedCursorPagination
 
     def _interest_tag_ids(self):
         if not hasattr(self, "_cached_interest_tag_ids"):
@@ -205,7 +211,7 @@ class PersonalizedFeedView(generics.ListAPIView):
         return self._cached_interest_tag_ids
 
     def get_queryset(self):
-        return personalized_feed_queryset(
+        return quality_reranked_feed(
             self.request.user,
             interest_tag_ids=self._interest_tag_ids(),
         )
@@ -419,3 +425,64 @@ class PublicationReactionView(APIView):
             viewer=request.user,
         )
         return Response(PublicationEngagementSerializer(data).data)
+
+
+
+class PublicationFeedFeedbackView(APIView):
+    permission_classes = [IsAuthenticated]
+    throttle_classes = [EngagementActionThrottle]
+
+    def get_publication(self, publication_id):
+        return get_object_or_404(
+            Publication,
+            public_id=publication_id,
+            visibility=Publication.Visibility.PUBLISHED,
+        )
+
+    @extend_schema(
+        responses=FeedFeedbackStateSerializer,
+        summary="Get my feed feedback for a publication",
+    )
+    def get(self, request, publication_id):
+        publication = self.get_publication(publication_id)
+        reason = (
+            FeedFeedback.objects.filter(
+                user=request.user,
+                publication=publication,
+            )
+            .values_list("reason", flat=True)
+            .first()
+        )
+        return Response({"reason": reason})
+
+    @extend_schema(
+        request=FeedFeedbackWriteSerializer,
+        responses={200: FeedFeedbackStateSerializer},
+        summary="Set or replace feed feedback",
+    )
+    def put(self, request, publication_id):
+        serializer = FeedFeedbackWriteSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        publication = self.get_publication(publication_id)
+        try:
+            feedback = set_feed_feedback(
+                user=request.user,
+                publication=publication,
+                reason=serializer.validated_data["reason"],
+            )
+        except ValueError as exc:
+            raise serializers.ValidationError({"detail": str(exc)}) from exc
+        return Response({"reason": feedback.reason})
+
+    @extend_schema(
+        request=None,
+        responses={200: FeedFeedbackStateSerializer},
+        summary="Remove my feed feedback",
+    )
+    def delete(self, request, publication_id):
+        publication = self.get_publication(publication_id)
+        remove_feed_feedback(
+            user=request.user,
+            publication=publication,
+        )
+        return Response({"reason": None})
