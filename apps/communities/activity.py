@@ -274,6 +274,7 @@ def community_activity_timeline(community, *, viewer=None, limit=TIMELINE_LIMIT)
 def recommended_community_rows(viewer) -> list[dict]:
     now = timezone.now()
     week = now - timedelta(days=7)
+    hidden_ids = _hidden_user_ids(viewer)
     interest_tag_ids = tuple(viewer_interest_tag_ids(viewer))
 
     followed_ids = UserFollow.objects.filter(follower=viewer).values("following_id")
