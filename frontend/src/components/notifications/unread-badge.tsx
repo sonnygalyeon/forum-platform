@@ -8,7 +8,7 @@ export function NotificationUnreadBadge({ compact = false }: { compact?: boolean
   const { user } = useAuth();
   const query = useQuery({
     queryKey: ["notification-unread"],
-    queryFn: () => clientApi<{ unread_count: number }>("/notifications/unread-count/"),
+    queryFn: () => clientApi<{ unread_count: number }>("/notifications/center/unread-count/"),
     enabled: Boolean(user),
     refetchInterval: 10000,
     refetchOnWindowFocus: true,
