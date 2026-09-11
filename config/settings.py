@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 
 from openapi_enums import (
     COMMENT_KIND_CHOICES,
+    FEED_FEEDBACK_REASON_CHOICES,
     COMMUNITY_STAFF_ROLE_CHOICES,
     IDENTITY_ACCENT_CHOICES,
     IDENTITY_BADGE_RULE_CHOICES,
@@ -273,6 +274,7 @@ SPECTACULAR_SETTINGS = {
     "ENUM_NAME_OVERRIDES": {
         "PublicationKindEnum": PUBLICATION_KIND_CHOICES,
         "CommentKindEnum": COMMENT_KIND_CHOICES,
+        "FeedFeedbackReasonEnum": FEED_FEEDBACK_REASON_CHOICES,
         "MediaAssetKindEnum": MEDIA_ASSET_KIND_CHOICES,
         "NotificationKindEnum": NOTIFICATION_KIND_CHOICES,
         "MediaAssetStatusEnum": MEDIA_ASSET_STATUS_CHOICES,
