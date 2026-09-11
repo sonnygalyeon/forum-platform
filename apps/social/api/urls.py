@@ -19,6 +19,7 @@ from .views import (
     SocialRecommendationsView,
     PublicationEngagementView,
     PublicationReactionView,
+    PublicationFeedFeedbackView,
 )
 
 
@@ -41,4 +42,5 @@ urlpatterns = [
     path("publications/<uuid:publication_id>/bookmark/", PublicationBookmarkView.as_view(), name="publication-bookmark"),
     path("publications/<uuid:publication_id>/engagement/", PublicationEngagementView.as_view(), name="publication-engagement"),
     path("publications/<uuid:publication_id>/reaction/", PublicationReactionView.as_view(), name="publication-reaction"),
+    path("publications/<uuid:publication_id>/feed-feedback/", PublicationFeedFeedbackView.as_view(), name="publication-feed-feedback"),
 ]
