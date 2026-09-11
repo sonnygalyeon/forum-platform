@@ -5,7 +5,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.notifications.cache import get_unread_count
+from apps.notifications.cache import get_center_unread_count, get_unread_count
 from apps.notifications.models import Notification, NotificationPreference
 from apps.notifications.presentation import CATEGORY_CHOICES
 from apps.notifications.read_state import mark_category_read, mark_many_read
@@ -14,6 +14,7 @@ from apps.notifications.services import mark_notification_read
 from apps.publications.api.serializers import PublicationListSerializer
 
 from .serializers import (
+    NotificationCenterPreferenceSerializer,
     NotificationCenterSerializer,
     NotificationPreferenceSerializer,
     NotificationSerializer,
@@ -39,11 +40,11 @@ class NotificationReadManyRequestSerializer(serializers.Serializer):
     )
 
 
-def _filtered_notifications(request):
+def _filtered_notifications(request, *, include_engagement=True):
     category = request.query_params.get("category") or None
     if category not in {None, *CATEGORY_CHOICES}:
         return notification_queryset(request.user).none()
-    queryset = notification_queryset(request.user, category=category)
+    queryset = notification_queryset(request.user, category=category, include_engagement=include_engagement)
     unread = request.query_params.get("unread") or request.query_params.get("unread_only")
     if unread in {"1", "true", "True"}:
         queryset = queryset.filter(read_at__isnull=True)
@@ -57,7 +58,7 @@ class NotificationListView(generics.ListAPIView):
     serializer_class = NotificationSerializer
 
     def get_queryset(self):
-        return _filtered_notifications(self.request)
+        return _filtered_notifications(self.request, include_engagement=False)
 
 
 class NotificationCenterListView(generics.ListAPIView):
@@ -82,6 +83,18 @@ class NotificationUnreadCountView(APIView):
 
     def get(self, request):
         return Response({"unread_count": get_unread_count(request.user)})
+
+
+class NotificationCenterUnreadCountView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        operation_id="notification_center_unread_count",
+        responses={200: UnreadCountSerializer},
+        summary="Get unread notification-center count",
+    )
+    def get(self, request):
+        return Response({"unread_count": get_center_unread_count(request.user)})
 
 
 @extend_schema_view(
@@ -165,3 +178,15 @@ class FeedView(generics.ListAPIView):
 
     def get_queryset(self):
         return feed_queryset(self.request.user)
+
+
+
+class NotificationCenterPreferenceView(generics.RetrieveUpdateAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = NotificationCenterPreferenceSerializer
+
+    def get_object(self):
+        preference, _ = NotificationPreference.objects.get_or_create(
+            user=self.request.user
+        )
+        return preference
