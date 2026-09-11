@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { MessageSquareText, Sparkles } from "lucide-react";
+import { Heart, MessageSquareText, Sparkles } from "lucide-react";
 
 import { UserAvatar } from "@/components/profile/user-avatar";
 import type { Publication } from "@/lib/types";
@@ -8,6 +8,7 @@ const labels = { post: "Пост", article: "Статья", topic: "Вопрос
 
 type FeedAwarePublication = Publication & {
   feed_score?: number;
+  reaction_total?: number;
   recommendation_reasons?: Array<{ code: string; label: string }>;
 };
 
@@ -58,7 +59,7 @@ export function PublicationCard({ publication }: { publication: Publication }) {
               </Link>
             ))}
           </div>
-          <span className="muted-inline"><MessageSquareText size={13} /> {publication.comment_count ?? 0}</span>
+          <div className="feed-engagement-inline">{feedPublication.reaction_total ? <span className="muted-inline"><Heart size={13}/> {feedPublication.reaction_total}</span> : null}<span className="muted-inline"><MessageSquareText size={13} /> {publication.comment_count ?? 0}</span></div>
         </div>
       </div>
       <div className="iris-ornament"><span /><span /><span /></div>
