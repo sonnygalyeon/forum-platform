@@ -50,6 +50,12 @@ class FeedRecommendationReasonSerializer(serializers.Serializer):
     label = serializers.CharField()
 
 
+class FeedQualityAdjustmentSerializer(serializers.Serializer):
+    code = serializers.CharField()
+    label = serializers.CharField()
+    delta = serializers.IntegerField()
+
+
 class FeedPublicationSerializer(PublicationListSerializer):
     feed_score = serializers.IntegerField(read_only=True)
     recommendation_reasons = serializers.SerializerMethodField()
@@ -60,8 +66,51 @@ class FeedPublicationSerializer(PublicationListSerializer):
             "recommendation_reasons",
         ]
 
+    def get_quality_adjustments(self, obj) -> list[dict[str, object]]:
+        adjustments: list[dict[str, object]] = []
+
+        stale = int(getattr(obj, "feed_stale_penalty", 0) or 0)
+        if stale:
+            adjustments.append({
+                "code": "stale_penalty",
+                "label": "Старый материал получил штраф",
+                "delta": -stale,
+            })
+
+        diversity = int(getattr(obj, "feed_diversity_penalty", 0) or 0)
+        if diversity:
+            adjustments.append({
+                "code": "diversity",
+                "label": "Штраф за повторы автора, сообщества или тем",
+                "delta": -diversity,
+            })
+
+        negative = int(getattr(obj, "feed_negative_feedback_penalty", 0) or 0)
+        if negative:
+            adjustments.append({
+                "code": "negative_feedback",
+                "label": "Учтены ваши предыдущие скрытия",
+                "delta": -negative,
+            })
+
+        exploration = int(getattr(obj, "feed_exploration_bonus", 0) or 0)
+        if exploration:
+            adjustments.append({
+                "code": "exploration",
+                "label": "Новый источник для разнообразия ленты",
+                "delta": exploration,
+            })
+
+        return adjustments
+
     def get_recommendation_reasons(self, obj) -> list[dict[str, str]]:
         reasons: list[dict[str, str]] = []
+
+        if getattr(obj, "feed_is_exploration", False):
+            reasons.append({
+                "code": "exploration",
+                "label": "Новый источник для разнообразия",
+            })
 
         if getattr(obj, "feed_followed_author", False):
             reasons.append({
@@ -170,3 +219,14 @@ class PublicationEngagementSerializer(serializers.Serializer):
     engagement_score = serializers.IntegerField(min_value=0)
     my_reaction = serializers.CharField(allow_null=True)
     can_react = serializers.BooleanField()
+
+
+
+class FeedFeedbackWriteSerializer(serializers.Serializer):
+    reason = serializers.ChoiceField(
+        choices=["not_interested", "too_repetitive", "already_seen"],
+    )
+
+
+class FeedFeedbackStateSerializer(serializers.Serializer):
+    reason = serializers.CharField(allow_null=True)
