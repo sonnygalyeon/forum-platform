@@ -141,6 +141,14 @@ export type CommunityRecommendation = {
 };
 
 export type PublicationReactionKind = "heart" | "insightful" | "useful" | "curious";
+export type FeedFeedbackReason = "not_interested" | "too_repetitive" | "already_seen";
+
+export type FeedFeedbackItem = {
+  publication: Publication;
+  reason: FeedFeedbackReason;
+  created_at: string;
+  updated_at: string;
+};
 
 export type PublicationEngagement = {
   reaction_total: number;
