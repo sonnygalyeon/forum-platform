@@ -48,6 +48,7 @@ from .serializers import (
     PublicationReactionWriteSerializer,
     FeedFeedbackStateSerializer,
     FeedFeedbackWriteSerializer,
+    FeedFeedbackItemSerializer,
 )
 
 
@@ -486,3 +487,27 @@ class PublicationFeedFeedbackView(APIView):
             publication=publication,
         )
         return Response({"reason": None})
+
+
+
+class MyFeedFeedbackView(generics.ListAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = FeedFeedbackItemSerializer
+
+    def get_queryset(self):
+        return (
+            FeedFeedback.objects.filter(
+                user=self.request.user,
+                publication__visibility=Publication.Visibility.PUBLISHED,
+            )
+            .select_related(
+                "publication",
+                "publication__author",
+                "publication__author__avatar_asset",
+                "publication__author__banner_asset",
+                "publication__author__identity_profile__equipped_frame",
+                "publication__community",
+            )
+            .prefetch_related("publication__tags")
+            .order_by("-updated_at", "-id")
+        )
