@@ -42,19 +42,12 @@ def set_publication_reaction(*, user, publication, kind: str):
     if users_have_block_between_ids(user.pk, publication.author_id):
         raise ValueError("Reaction is unavailable while either user has blocked the other.")
 
-    reaction = (
-        PublicationReaction.objects.select_for_update()
-        .filter(user=user, publication=publication)
-        .first()
+    reaction, created = PublicationReaction.objects.get_or_create(
+        user=user,
+        publication=publication,
+        defaults={"kind": kind},
     )
-    created = reaction is None
-    if reaction is None:
-        reaction = PublicationReaction.objects.create(
-            user=user,
-            publication=publication,
-            kind=kind,
-        )
-    elif reaction.kind != kind:
+    if not created and reaction.kind != kind:
         reaction.kind = kind
         reaction.save(update_fields=["kind", "updated_at"])
 
