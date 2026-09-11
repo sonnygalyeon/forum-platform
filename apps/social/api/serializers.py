@@ -146,3 +146,22 @@ class SocialRelationshipSummarySerializer(serializers.Serializer):
     mutual_count = serializers.IntegerField(min_value=0)
     shared_community_count = serializers.IntegerField(min_value=0)
     shared_tag_count = serializers.IntegerField(min_value=0)
+
+
+
+class PublicationReactionWriteSerializer(serializers.Serializer):
+    kind = serializers.ChoiceField(
+        choices=["heart", "insightful", "useful", "curious"],
+    )
+
+
+class PublicationEngagementSerializer(serializers.Serializer):
+    reaction_total = serializers.IntegerField(min_value=0)
+    reactions = serializers.DictField(
+        child=serializers.IntegerField(min_value=0),
+    )
+    bookmark_count = serializers.IntegerField(min_value=0)
+    comment_count = serializers.IntegerField(min_value=0)
+    engagement_score = serializers.IntegerField(min_value=0)
+    my_reaction = serializers.CharField(allow_null=True)
+    can_react = serializers.BooleanField()
