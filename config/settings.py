@@ -178,6 +178,7 @@ REST_FRAMEWORK = {
         "auth": os.environ.get("DRF_THROTTLE_AUTH", "10/min"),
         "uploads": os.environ.get("DRF_THROTTLE_UPLOADS", "120/min"),
         "social_actions": os.environ.get("DRF_THROTTLE_SOCIAL_ACTIONS", "120/hour"),
+        "engagement_actions": os.environ.get("DRF_THROTTLE_ENGAGEMENT_ACTIONS", "240/hour"),
     },
 }
 
