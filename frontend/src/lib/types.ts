@@ -272,6 +272,10 @@ export type NotificationPreferences = {
   updated_at: string;
 };
 
+export type NotificationCenterPreferences = NotificationPreferences & {
+  publication_reactions: boolean;
+};
+
 export type SocialUserEdge = { user: User; followed_at?: string; blocked_at?: string; muted_at?: string };
 
 export type SocialGraphConnection = {
