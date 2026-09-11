@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 from collections import Counter
+from datetime import timedelta
 
 from django.db import transaction
 from django.db.models import Count, Q
+from django.utils import timezone
 
 from apps.publications.models import Publication
 from apps.social.models import PublicationBookmark, PublicationReaction, UserBlock
@@ -40,11 +42,40 @@ def set_publication_reaction(*, user, publication, kind: str):
     if users_have_block_between_ids(user.pk, publication.author_id):
         raise ValueError("Reaction is unavailable while either user has blocked the other.")
 
-    reaction, created = PublicationReaction.objects.update_or_create(
-        user=user,
-        publication=publication,
-        defaults={"kind": kind},
+    reaction = (
+        PublicationReaction.objects.select_for_update()
+        .filter(user=user, publication=publication)
+        .first()
     )
+    created = reaction is None
+    if reaction is None:
+        reaction = PublicationReaction.objects.create(
+            user=user,
+            publication=publication,
+            kind=kind,
+        )
+    elif reaction.kind != kind:
+        reaction.kind = kind
+        reaction.save(update_fields=["kind", "updated_at"])
+
+    if created:
+        from apps.notifications.events import emit_notification_event
+        from apps.notifications.models import NotificationEvent
+
+        cutoff = timezone.now() - timedelta(hours=6)
+        recently_notified = NotificationEvent.objects.filter(
+            kind=NotificationEvent.Kind.PUBLICATION_REACTION,
+            actor=user,
+            publication=publication,
+            created_at__gte=cutoff,
+        ).exists()
+        if not recently_notified:
+            emit_notification_event(
+                kind=NotificationEvent.Kind.PUBLICATION_REACTION,
+                actor=user,
+                publication=publication,
+            )
+
     return reaction, created
 
 
