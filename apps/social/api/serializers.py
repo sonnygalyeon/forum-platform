@@ -1,7 +1,7 @@
 from rest_framework import serializers
 
 from apps.publications.api.serializers import PublicationListSerializer
-from apps.social.models import UserBlock, UserFollow, UserMute
+from apps.social.models import FeedFeedback, UserBlock, UserFollow, UserMute
 from apps.users.api.serializers import UserPublicSerializer
 
 
@@ -246,3 +246,17 @@ class FeedFeedbackWriteSerializer(serializers.Serializer):
 
 class FeedFeedbackStateSerializer(serializers.Serializer):
     reason = serializers.CharField(allow_null=True)
+
+
+
+class FeedFeedbackItemSerializer(serializers.ModelSerializer):
+    publication = PublicationListSerializer(read_only=True)
+
+    class Meta:
+        model = FeedFeedback
+        fields = [
+            "publication",
+            "reason",
+            "created_at",
+            "updated_at",
+        ]
