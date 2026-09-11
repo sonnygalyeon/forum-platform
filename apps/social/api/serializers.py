@@ -112,3 +112,37 @@ class FeedPublicationSerializer(PublicationListSerializer):
                 })
 
         return reasons[:3]
+
+
+class SocialRecommendationReasonSerializer(serializers.Serializer):
+    code = serializers.CharField()
+    label = serializers.CharField()
+
+
+class SocialConnectionSerializer(serializers.Serializer):
+    user = UserPublicSerializer(read_only=True)
+    followed_at = serializers.DateTimeField(read_only=True, allow_null=True)
+    is_following = serializers.BooleanField(read_only=True, default=False)
+    follows_you = serializers.BooleanField(read_only=True, default=False)
+    is_mutual = serializers.BooleanField(read_only=True, default=False)
+    mutual_count = serializers.IntegerField(read_only=True, min_value=0, default=0)
+    shared_community_count = serializers.IntegerField(read_only=True, min_value=0, default=0)
+    shared_tag_count = serializers.IntegerField(read_only=True, min_value=0, default=0)
+
+
+class SocialRecommendationSerializer(SocialConnectionSerializer):
+    interaction_count = serializers.IntegerField(read_only=True, min_value=0, default=0)
+    active_recently = serializers.BooleanField(read_only=True, default=False)
+    recommendation_score = serializers.IntegerField(read_only=True, min_value=0)
+    recommendation_reasons = SocialRecommendationReasonSerializer(many=True, read_only=True)
+
+
+class SocialRelationshipSummarySerializer(serializers.Serializer):
+    is_following = serializers.BooleanField()
+    follows_you = serializers.BooleanField()
+    is_mutual = serializers.BooleanField()
+    is_muted = serializers.BooleanField()
+    can_follow = serializers.BooleanField()
+    mutual_count = serializers.IntegerField(min_value=0)
+    shared_community_count = serializers.IntegerField(min_value=0)
+    shared_tag_count = serializers.IntegerField(min_value=0)
