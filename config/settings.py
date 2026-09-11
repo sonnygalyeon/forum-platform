@@ -280,7 +280,7 @@ SPECTACULAR_SETTINGS = {
         "NotificationKindEnum": NOTIFICATION_KIND_CHOICES,
         "MediaAssetStatusEnum": MEDIA_ASSET_STATUS_CHOICES,
         "NotificationEventStatusEnum": NOTIFICATION_EVENT_STATUS_CHOICES,
-        "ReportReasonEnum": REPORT_REASON_CHOICES,
+        "ReasonEnum": REPORT_REASON_CHOICES,
         "ReportStatusEnum": REPORT_STATUS_CHOICES,
         "ReportTargetTypeEnum": REPORT_TARGET_TYPE_CHOICES,
         "ModerationActionTargetTypeEnum": MODERATION_ACTION_TARGET_TYPE_CHOICES,
