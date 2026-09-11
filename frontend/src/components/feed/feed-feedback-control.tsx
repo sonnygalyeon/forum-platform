@@ -1,13 +1,12 @@
 "use client";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { MoreHorizontal, RotateCcw, X } from "lucide-react";
+import { MoreHorizontal, X } from "lucide-react";
 import { useState } from "react";
 
 import { clientApi, errorMessage } from "@/lib/client-api";
-import type { CursorPage, Publication } from "@/lib/types";
+import type { CursorPage, FeedFeedbackReason, Publication } from "@/lib/types";
 
-type FeedFeedbackReason = "not_interested" | "too_repetitive" | "already_seen";
 
 const options: Array<{ reason: FeedFeedbackReason; label: string; hint: string }> = [
   {
@@ -30,7 +29,6 @@ const options: Array<{ reason: FeedFeedbackReason; label: string; hint: string }
 export function FeedFeedbackControl({ publicationId }: { publicationId: string }) {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
-  const [lastReason, setLastReason] = useState<FeedFeedbackReason | null>(null);
 
   const removeFromCachedFeed = () => {
     qc.setQueriesData<CursorPage<Publication>>(
@@ -50,34 +48,11 @@ export function FeedFeedbackControl({ publicationId }: { publicationId: string }
       },
     ),
     onSuccess: (data) => {
-      setLastReason(data.reason);
       setOpen(false);
       removeFromCachedFeed();
       void qc.invalidateQueries({ queryKey: ["home-feed"] });
     },
   });
-
-  const undo = useMutation({
-    mutationFn: () => clientApi<{ reason: null }>(
-      "/publications/" + publicationId + "/feed-feedback/",
-      { method: "DELETE" },
-    ),
-    onSuccess: () => {
-      setLastReason(null);
-      void qc.invalidateQueries({ queryKey: ["home-feed"] });
-    },
-  });
-
-  if (lastReason) {
-    return (
-      <div className="feed-feedback-undo">
-        <span>Скрыто из «Для вас»</span>
-        <button type="button" onClick={() => undo.mutate()} disabled={undo.isPending}>
-          <RotateCcw size={13}/> Отменить
-        </button>
-      </div>
-    );
-  }
 
   return (
     <div className="feed-feedback-control">
