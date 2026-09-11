@@ -100,7 +100,7 @@ export default function HomePage() {
       ) : query.data?.results.length ? (
         <div className="feed-list">
           {query.data.results.map((item) => (
-            <PublicationCard key={item.id} publication={item} />
+            <PublicationCard key={item.id} publication={item} feedFeedback={effectiveMode === "for-you"} />
           ))}
         </div>
       ) : (
