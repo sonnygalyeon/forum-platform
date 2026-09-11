@@ -52,6 +52,17 @@ NOTIFICATION_EVENT_STATUS_CHOICES = [
     ("failed", "Failed"),
 ]
 
+REPORT_REASON_CHOICES = [
+    ("spam", "Spam"),
+    ("harassment", "Harassment"),
+    ("hate", "Hate"),
+    ("violence", "Violence"),
+    ("illegal", "Illegal content"),
+    ("personal_data", "Personal data"),
+    ("copyright", "Copyright"),
+    ("other", "Other"),
+]
+
 REPORT_STATUS_CHOICES = [
     ("open", "Open"),
     ("reviewing", "Reviewing"),
