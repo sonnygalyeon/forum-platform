@@ -11,6 +11,12 @@ PUBLICATION_KIND_CHOICES = [
     ("topic", "Topic"),
 ]
 
+FEED_FEEDBACK_REASON_CHOICES = [
+    ("not_interested", "Not interested"),
+    ("too_repetitive", "Too repetitive"),
+    ("already_seen", "Already seen"),
+]
+
 COMMENT_KIND_CHOICES = [
     ("answer", "Answer"),
     ("comment", "Comment"),
