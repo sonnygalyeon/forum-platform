@@ -9,7 +9,7 @@ from django.utils import timezone
 from apps.discussions.models import Comment
 from apps.publications.models import Publication, Tag
 from apps.social.feed import viewer_interest_tag_ids
-from apps.social.models import CommunitySubscription, UserBlock, UserFollow, UserMute
+from apps.social.models import CommunitySubscription, PublicationReaction, UserBlock, UserFollow, UserMute
 from apps.users.models import User
 
 
@@ -72,7 +72,12 @@ def _interaction_publication_ids(viewer) -> set[int]:
         .values_list("publication_id", flat=True)
         .order_by("-created_at")[:250]
     )
-    return authored.union(participated)
+    reacted = set(
+        PublicationReaction.objects.filter(user=viewer)
+        .values_list("publication_id", flat=True)
+        .order_by("-updated_at")[:250]
+    )
+    return authored.union(participated, reacted)
 
 
 def social_metrics_for_users(viewer, users) -> dict[int, dict]:
@@ -148,6 +153,15 @@ def social_metrics_for_users(viewer, users) -> dict[int, dict]:
             .distinct()
         ):
             interaction_counts[author_id] += 1
+        for user_id in (
+            PublicationReaction.objects.filter(
+                user_id__in=ids,
+                publication_id__in=interaction_publication_ids,
+            )
+            .values_list("user_id", flat=True)
+            .distinct()
+        ):
+            interaction_counts[user_id] += 1
 
     active_cutoff = timezone.now() - timedelta(days=30)
     recently_active = set(
@@ -302,6 +316,14 @@ def _candidate_ids(viewer) -> set[int]:
             .values_list("author_id", flat=True)
             .distinct()[:MAX_CANDIDATE_POOL]
         )
+        candidates.update(
+            PublicationReaction.objects.filter(
+                publication_id__in=interaction_publication_ids,
+            )
+            .exclude(user=viewer)
+            .values_list("user_id", flat=True)
+            .distinct()[:MAX_CANDIDATE_POOL]
+        )
 
     candidates.update(
         UserFollow.objects.filter(following=viewer)
@@ -382,8 +404,8 @@ def recommendation_rows(viewer) -> list[dict]:
         if interaction_count:
             reasons.append(
                 {
-                    "code": "discussion_interaction",
-                    "label": "Пересекались в обсуждениях",
+                    "code": "engagement_interaction",
+                    "label": "Пересекались в обсуждениях или реакциях",
                 }
             )
         if follows_you:
