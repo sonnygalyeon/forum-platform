@@ -81,6 +81,7 @@ test("0.9 product surfaces are reachable for an authenticated user", async ({ pa
   await registerQaUser(page, "surfaces");
   const surfaces = [
     ["/discover", /Найти полезное/i],
+    ["/communities", /Пространства по интересам/i],
     ["/people", /Люди, с которыми есть контекст/i],
     ["/saved", /Сохранённые публикации/i],
     ["/drafts", /Незавершённые публикации/i],
