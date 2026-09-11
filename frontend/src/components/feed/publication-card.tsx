@@ -2,17 +2,21 @@ import Link from "next/link";
 import { Heart, MessageSquareText, Sparkles } from "lucide-react";
 
 import { UserAvatar } from "@/components/profile/user-avatar";
+import { FeedFeedbackControl } from "@/components/feed/feed-feedback-control";
 import type { Publication } from "@/lib/types";
 
 const labels = { post: "Пост", article: "Статья", topic: "Вопрос" } as const;
 
 type FeedAwarePublication = Publication & {
   feed_score?: number;
+  feed_base_score?: number;
   reaction_total?: number;
+  is_exploration?: boolean;
   recommendation_reasons?: Array<{ code: string; label: string }>;
+  quality_adjustments?: Array<{ code: string; label: string; delta: number }>;
 };
 
-export function PublicationCard({ publication }: { publication: Publication }) {
+export function PublicationCard({ publication, feedFeedback = false }: { publication: Publication; feedFeedback?: boolean }) {
   const feedPublication = publication as FeedAwarePublication;
   const title = publication.title || publication.excerpt.slice(0, 90) || "Публикация";
   const reasons = feedPublication.recommendation_reasons ?? [];
@@ -28,6 +32,8 @@ export function PublicationCard({ publication }: { publication: Publication }) {
             ))}
           </div>
         ) : null}
+
+        <div className="feed-card-topline">{feedFeedback ? <FeedFeedbackControl publicationId={publication.id}/> : null}</div>
 
         <div className="meta-row author-meta">
           <Link href={`/users/${publication.author.id}`} className="author-link">
