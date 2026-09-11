@@ -1,3 +1,4 @@
+from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
 from apps.publications.api.serializers import PublicationListSerializer
@@ -82,6 +83,7 @@ class FeedPublicationSerializer(PublicationListSerializer):
             "quality_adjustments",
         ]
 
+    @extend_schema_field(FeedQualityAdjustmentSerializer(many=True))
     def get_quality_adjustments(self, obj) -> list[dict[str, object]]:
         adjustments: list[dict[str, object]] = []
 
@@ -239,9 +241,7 @@ class PublicationEngagementSerializer(serializers.Serializer):
 
 
 class FeedFeedbackWriteSerializer(serializers.Serializer):
-    reason = serializers.ChoiceField(
-        choices=["not_interested", "too_repetitive", "already_seen"],
-    )
+    reason = serializers.ChoiceField(choices=FeedFeedback.Reason.choices)
 
 
 class FeedFeedbackStateSerializer(serializers.Serializer):
