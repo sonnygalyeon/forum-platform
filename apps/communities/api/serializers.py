@@ -104,6 +104,7 @@ class CommunityActivitySummarySerializer(serializers.Serializer):
 
 class CommunityContributorSerializer(serializers.Serializer):
     user = UserPublicSerializer(read_only=True)
+    role = serializers.CharField(read_only=True, allow_null=True)
     publication_count = serializers.IntegerField(min_value=0)
     comment_count = serializers.IntegerField(min_value=0)
     accepted_answer_count = serializers.IntegerField(min_value=0)
