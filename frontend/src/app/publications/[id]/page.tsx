@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Bookmark, BookmarkCheck, Edit3, History, MessageSquareText } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
 import { ContentBlocks } from "@/components/content/content-blocks";
+import { PublicationEngagementBar } from "@/components/feed/publication-engagement";
 import { CommentItem } from "@/components/discussion/comment-item";
 import { CommentComposer } from "@/components/discussion/comment-composer";
 import { UserAvatar } from "@/components/profile/user-avatar";
@@ -47,6 +48,7 @@ export default function PublicationPage() {
       {p.title?<h1>{p.title}</h1>:null}
       <div className="tags">{p.tags.map(t=><span className="tag" key={t.id}>{t.name}</span>)}</div>
       <ContentBlocks blocks={p.content} media={p.media}/>
+      <PublicationEngagementBar publicationId={p.id}/>
     </article>
     <section className="discussion-section">
       <div className="section-heading"><h2><MessageSquareText size={19}/> {p.type === "topic" ? "Ответы" : "Обсуждение"}</h2><span>{comments.data?.results.length ?? 0} на странице</span></div>
