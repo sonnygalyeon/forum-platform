@@ -8,6 +8,8 @@ import { LoadingBlock } from "@/components/ui/loading";
 import { clientApi } from "@/lib/client-api";
 import type { CommunityActivityItem, CommunityActivitySummary, CommunityContributor, Page } from "@/lib/types";
 
+const roleLabels:Record<string,string>={owner:"Владелец",moderator:"Модератор",editor:"Редактор",subscriber:"Подписчик"};
+
 function relativeDate(value:string){
   const diff=Math.max(0,Date.now()-new Date(value).getTime());
   const minutes=Math.floor(diff/60000);
@@ -59,7 +61,7 @@ export function CommunityActivityPanel({communityId}:{communityId:string}){
           <div className="community-contributor-list">{contributors.data.results.map(item=>
             <Link href={"/users/"+item.user.id} key={item.user.id} className="community-contributor">
               <UserAvatar user={item.user} size="sm"/>
-              <div><strong>@{item.user.nickname}</strong><span>{item.publication_count} публ. · {item.comment_count} комм.{item.accepted_answer_count?" · "+item.accepted_answer_count+" принятых":""}</span></div>
+              <div><strong>@{item.user.nickname}{item.role?" · "+(roleLabels[item.role]??item.role):""}</strong><span>{item.publication_count} публ. · {item.comment_count} комм.{item.accepted_answer_count?" · "+item.accepted_answer_count+" принятых":""}</span></div>
               <b>{item.activity_score}</b>
             </Link>
           )}</div>:<div className="inline-empty">За последние 30 дней активных участников пока нет.</div>}
