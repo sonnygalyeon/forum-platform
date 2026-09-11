@@ -7,6 +7,7 @@ import { BellMinus, BellPlus, PenSquare, ShieldCheck, UsersRound } from "lucide-
 import { AppShell } from "@/components/layout/app-shell";
 import { CommunitySettingsPanel } from "@/components/community/community-settings-panel";
 import { CommunityStaffPanel } from "@/components/community/community-staff-panel";
+import { CommunityActivityPanel } from "@/components/community/community-activity-panel";
 import { PublicationCard } from "@/components/feed/publication-card";
 import { UserAvatar } from "@/components/profile/user-avatar";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -58,6 +59,8 @@ export default function CommunityPage() {
 
       {current.can_edit ? <CommunitySettingsPanel community={current}/> : null}
       {(current.staff_count ?? 0) > 0 || current.can_manage ? <CommunityStaffPanel communityId={current.id} canManage={Boolean(current.can_manage)}/> : null}
+
+      <CommunityActivityPanel communityId={current.id}/>
 
       <section className="section-block">
         <div className="section-heading"><h2>Публикации</h2></div>
