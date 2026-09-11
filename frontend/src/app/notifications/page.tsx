@@ -9,7 +9,7 @@ import { AppShell } from "@/components/layout/app-shell";
 import { EmptyState } from "@/components/ui/empty-state";
 import { LoadingBlock } from "@/components/ui/loading";
 import { clientApi } from "@/lib/client-api";
-import type { CursorPage, Notification } from "@/lib/types";
+import type { CursorPage, Notification, NotificationCenterPreferences } from "@/lib/types";
 import { useAuth } from "@/providers/auth-provider";
 
 type NotificationCategory = "replies" | "social" | "communities" | "moderation";
@@ -45,6 +45,12 @@ export default function NotificationsPage() {
   const suffix = `${category ? `category=${category}&` : ""}${unreadOnly ? "unread=1" : ""}`.replace(/&$/, "");
   const endpoint = `/notifications/center/${suffix ? `?${suffix}` : ""}`;
 
+  const preferences = useQuery({
+    queryKey: ["notification-center-preferences"],
+    queryFn: () => clientApi<NotificationCenterPreferences>("/notifications/center/preferences/"),
+    enabled: Boolean(user),
+  });
+
   const query = useQuery({
     queryKey: ["notifications", category, unreadOnly],
     queryFn: () => clientApi<CursorPage<NotificationV2>>(endpoint),
@@ -71,6 +77,16 @@ export default function NotificationsPage() {
     onSuccess: refreshCounts,
   });
 
+  const toggleReactionNotifications = useMutation({
+    mutationFn: (enabled: boolean) => clientApi<NotificationCenterPreferences>("/notifications/center/preferences/", {
+      method: "PATCH",
+      body: JSON.stringify({ publication_reactions: enabled }),
+    }),
+    onSuccess: (data) => {
+      qc.setQueryData(["notification-center-preferences"], data);
+    },
+  });
+
   const groups = useMemo(() => groupNotifications(query.data?.results ?? []), [query.data?.results]);
   const hasUnread = groups.some(group => group.unread);
 
@@ -94,7 +110,18 @@ export default function NotificationsPage() {
 
     <div className="section-heading">
       <span>{query.data?.results.length ?? 0} событий на странице</span>
-      <button className="secondary-button compact-button" onClick={() => setUnreadOnly(value => !value)}><Filter size={14}/>{unreadOnly ? "Показать все" : "Только непрочитанные"}</button>
+      <div className="notification-inline-controls">
+        {preferences.data ? <label className="notification-preference-inline">
+          <input
+            type="checkbox"
+            checked={preferences.data.publication_reactions}
+            disabled={toggleReactionNotifications.isPending}
+            onChange={(event) => toggleReactionNotifications.mutate(event.target.checked)}
+          />
+          Реакции
+        </label> : null}
+        <button className="secondary-button compact-button" onClick={() => setUnreadOnly(value => !value)}><Filter size={14}/>{unreadOnly ? "Показать все" : "Только непрочитанные"}</button>
+      </div>
     </div>
 
     {query.isLoading ? <LoadingBlock/> : query.isError ? <div className="error-panel">Не удалось загрузить уведомления.</div> : groups.length ? <div className="notification-list">
