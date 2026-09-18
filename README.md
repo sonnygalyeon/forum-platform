@@ -71,24 +71,19 @@ Realtime transport is not treated as the database. REST owns durable state and t
 
 ## Development quick start
 
-Create the local environment:
+Current development branch: **`ver1.2-discovery`**.
+
+With Docker Desktop running, start or update the local stack:
 
 ```bash
-cp .env.example .env
+sh scripts/dev_up.sh
 ```
 
-Start the development stack:
+The script keeps existing environment/data, applies migrations, synchronizes
+frontend dependencies and verifies readiness. Open http://localhost:3000.
 
-```bash
-docker compose up -d --build frontend worker beat
-```
-
-Run migrations/checks explicitly when changing backend schema:
-
-```bash
-docker compose run --rm api python manage.py migrate
-docker compose run --rm api python manage.py check
-```
+See [the detailed Russian update/start guide](docs/LOCAL_DEVELOPMENT_RU.md)
+for fetching the branch, preserving local edits, first startup and troubleshooting.
 
 ## API
 
@@ -217,3 +212,9 @@ Historical stage documents remain in the repository for implementation history, 
 See [stage scope and regression checks](docs/STAGE_1_1_7_INTEGRATION_HARDENING.md),
 [architecture](docs/architecture.md), [API map](docs/api.md),
 [data ownership](docs/database.md), and [deployment entry point](docs/deployment.md).
+
+## Search navigation (1.2.0 development stage)
+
+See [scope and API contract](docs/STAGE_1_2_0_SEARCH_NAVIGATION.md).
+Search now provides complete paged results and shareable filter/page URLs.
+The canonical application release version remains 1.0.0 until release promotion.

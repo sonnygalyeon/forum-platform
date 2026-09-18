@@ -65,11 +65,11 @@ def publication_search_queryset(viewer, *, query: str, publication_type: str = "
             | Q(tags__slug__icontains=query)
         )
         if sort == "relevance":
-            queryset = queryset.order_by("-search_rank", "-created_at")
+            queryset = queryset.order_by("-search_rank", "-created_at", "-id")
         else:
-            queryset = queryset.order_by("-created_at")
+            queryset = queryset.order_by("-created_at", "-id")
     else:
-        queryset = queryset.order_by("-created_at")
+        queryset = queryset.order_by("-created_at", "-id")
 
     return queryset.distinct()
 
@@ -137,9 +137,9 @@ def community_search_queryset(viewer, query: str):
                 default=Value(1),
                 output_field=IntegerField(),
             )
-        ).order_by("-search_priority", "-subscriber_count", "name")
+        ).order_by("-search_priority", "-subscriber_count", "name", "id")
     else:
-        queryset = queryset.order_by("-publication_count", "-subscriber_count", "name")
+        queryset = queryset.order_by("-publication_count", "-subscriber_count", "name", "id")
     return queryset
 
 
@@ -163,9 +163,9 @@ def tag_search_queryset(query: str):
                 default=Value(1),
                 output_field=IntegerField(),
             )
-        ).order_by("-search_priority", "-publication_count", "name")
+        ).order_by("-search_priority", "-publication_count", "name", "id")
     else:
-        queryset = queryset.filter(publication_count__gt=0).order_by("-publication_count", "name")
+        queryset = queryset.filter(publication_count__gt=0).order_by("-publication_count", "name", "id")
     return queryset
 
 
@@ -180,7 +180,7 @@ def open_topics_queryset(viewer):
         .filter(kind=Publication.Type.TOPIC)
         .annotate(has_accepted_answer=Exists(accepted_answers))
         .filter(has_accepted_answer=False)
-        .order_by("-created_at")
+        .order_by("-created_at", "-id")
     )
 
 
@@ -209,7 +209,7 @@ def recommended_publications_queryset(viewer):
     """
     queryset = publication_queryset(viewer, hide_muted=True)
     if viewer is None or not viewer.is_authenticated:
-        return queryset.order_by("-created_at")
+        return queryset.order_by("-created_at", "-id")
 
     interest_tag_ids = _interest_tag_ids(viewer)
     queryset = queryset.exclude(author=viewer).annotate(

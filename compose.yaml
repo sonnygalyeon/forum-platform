@@ -83,6 +83,8 @@ services:
     build:
       context: .
     env_file: [.env]
+    environment:
+      BUILD_SHA: ${BUILD_SHA:-unknown}
     volumes:
       - .:/app
     ports:

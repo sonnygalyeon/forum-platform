@@ -333,6 +333,14 @@ export type CursorPage<T> = {
 export type SearchScope = "all" | "publications" | "users" | "communities" | "tags";
 export type SearchTag = { id: string; name: string; slug: string; publication_count: number };
 export type SearchResponse = {
+  pagination?: {
+    page: number;
+    page_size: number;
+    total_pages: number;
+    total_results: number;
+    has_next: boolean;
+    has_previous: boolean;
+  } | null;
   query: string;
   scope: SearchScope;
   counts: { publications: number; users: number; communities: number; tags: number };

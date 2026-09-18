@@ -230,3 +230,20 @@ jobs:
           -v "$PWD/deploy/caddy/Caddyfile:/etc/caddy/Caddyfile:ro"
           caddy:2-alpine
           caddy validate --config /etc/caddy/Caddyfile
+
+  development-compose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate and start the documented local stack
+        run: |
+          sh -n scripts/dev_up.sh
+          sh scripts/dev_up.sh
+          curl -fsS http://127.0.0.1:3000/ >/dev/null
+          curl -fsS http://127.0.0.1:8000/api/v1/ready/
+      - name: Show development service logs on failure
+        if: failure()
+        run: docker compose logs --tail=100
+      - name: Stop isolated runner stack
+        if: always()
+        run: docker compose down --volumes --remove-orphans
