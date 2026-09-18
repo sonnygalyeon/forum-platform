@@ -1,6 +1,6 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery } from "@tanstack/react-query";
 import { FilePlus2, SlidersHorizontal, Sparkles } from "lucide-react";
 import { useState } from "react";
 import Link from "next/link";
@@ -33,11 +33,18 @@ export default function HomePage() {
         ? "/feed/for-you/"
         : "/publications/";
 
-  const query = useQuery({
+  const query = useInfiniteQuery({
     queryKey: ["home-feed", effectiveMode, user?.id ?? null],
-    queryFn: () => clientApi<CursorPage<Publication>>(endpoint),
+    initialPageParam: "",
+    // Only use the query string from API pagination links. The backend host
+    // may be internal; all browser requests must still pass through the BFF.
+    queryFn: ({ pageParam, signal }) => clientApi<CursorPage<Publication>>(`${endpoint}${pageParam}`, { signal }),
+    getNextPageParam: (page) => page.next ? new URL(page.next, "http://pagination.local").search : undefined,
     enabled: !authLoading,
   });
+  const publications = [...new Map(
+    query.data?.pages.flatMap((page) => page.results).map((item) => [item.id, item]) ?? [],
+  ).values()];
 
   const emptyTitle =
     effectiveMode === "following"
@@ -103,11 +110,11 @@ export default function HomePage() {
 
       {query.isLoading ? (
         <LoadingBlock />
-      ) : query.isError ? (
-        <div className="error-panel">Backend недоступен. Проверьте Django API.</div>
-      ) : query.data?.results.length ? (
+      ) : query.isError && !query.data ? (
+        <div className="error-panel" role="alert">Не удалось загрузить ленту. <button type="button" className="secondary-button" onClick={() => void query.refetch()}>Повторить</button></div>
+      ) : publications.length ? (
         <div className="feed-list">
-          {query.data.results.map((item) => (
+          {publications.map((item) => (
             <PublicationCard key={item.id} publication={item} feedFeedback={effectiveMode === "for-you"} />
           ))}
         </div>
@@ -123,6 +130,12 @@ export default function HomePage() {
           }
         />
       )}
+      {query.isFetchNextPageError ? <div className="error-panel" role="alert">Не удалось загрузить следующую страницу. Попробуйте ещё раз.</div> : null}
+      {query.hasNextPage ? (
+        <button type="button" className="secondary-button" disabled={query.isFetching} onClick={() => void query.fetchNextPage()}>
+          {query.isFetchingNextPage ? "Загружаем…" : query.isFetchNextPageError ? "Повторить загрузку" : "Показать ещё"}
+        </button>
+      ) : null}
     </AppShell>
   );
 }

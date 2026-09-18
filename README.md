@@ -211,3 +211,9 @@ observability / core
 - `docs/RELEASING.md` — release/deployment/rollback runbook.
 
 Historical stage documents remain in the repository for implementation history, but this README describes the current 1.0 product rather than asking new contributors to reconstruct it from geological strata.
+
+## Engagement integration hardening (1.1.7)
+
+See [stage scope and regression checks](docs/STAGE_1_1_7_INTEGRATION_HARDENING.md),
+[architecture](docs/architecture.md), [API map](docs/api.md),
+[data ownership](docs/database.md), and [deployment entry point](docs/deployment.md).

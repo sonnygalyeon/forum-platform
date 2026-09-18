@@ -15,6 +15,8 @@ const ALLOWED_ROOTS = new Set([
   "publication-drafts",
   "feed",
   "communities",
+  "community-recommendations",
+  "social",
   "notifications",
   "users",
   "comments",

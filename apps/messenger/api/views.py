@@ -3,6 +3,7 @@ import uuid
 
 from django.core import signing
 from django.core.cache import cache
+from django.core.exceptions import ValidationError
 from django.db.models import Q
 from drf_spectacular.utils import extend_schema
 from rest_framework import status
@@ -179,8 +180,11 @@ class ConversationMessagesView(APIView):
         if before:
             try:
                 before_message = Message.objects.get(public_id=before, conversation=conversation)
-                qs = qs.filter(created_at__lt=before_message.created_at)
-            except Message.DoesNotExist:
+                qs = qs.filter(
+                    Q(created_at__lt=before_message.created_at)
+                    | Q(created_at=before_message.created_at, id__lt=before_message.id)
+                )
+            except (Message.DoesNotExist, ValidationError):
                 return Response({"detail": "Invalid before cursor."}, status=400)
         rows = list(qs[: limit + 1])
         has_more = len(rows) > limit

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient, type InfiniteData } from "@tanstack/react-query";
 import { MoreHorizontal, X } from "lucide-react";
 import { useState } from "react";
 
@@ -31,10 +31,12 @@ export function FeedFeedbackControl({ publicationId }: { publicationId: string }
   const [open, setOpen] = useState(false);
 
   const removeFromCachedFeed = () => {
-    qc.setQueriesData<CursorPage<Publication>>(
-      { queryKey: ["home-feed"] },
+    qc.setQueriesData<InfiniteData<CursorPage<Publication>>>(
+      { queryKey: ["home-feed", "for-you"] },
       (current) => current
-        ? { ...current, results: current.results.filter((item) => item.id !== publicationId) }
+        ? { ...current, pages: current.pages.map((page) => ({
+          ...page, results: page.results.filter((item) => item.id !== publicationId),
+        })) }
         : current,
     );
   };
