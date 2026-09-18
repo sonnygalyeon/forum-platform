@@ -120,7 +120,7 @@ def messages_for_conversation(conversation, user=None):
                 Value(0),
             )
         )
-        .order_by("-created_at")
+        .order_by("-created_at", "-id")
     )
     if user is not None:
         qs = qs.exclude(hidden_edges__user=user)

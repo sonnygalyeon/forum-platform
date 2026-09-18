@@ -2,7 +2,7 @@
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Eye, RotateCcw, Save, Send, Trash2 } from "lucide-react";
-import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BlockEditor, normalizeBlocks, type PendingMedia } from "@/components/editor/block-editor";
 import { ContentBlocks } from "@/components/content/content-blocks";
 import { clientApi, errorMessage } from "@/lib/client-api";
@@ -51,7 +51,9 @@ export function PublicationEditorForm({
   const [savedAt, setSavedAt] = useState<string | null>(null);
   const [recoveryDismissed, setRecoveryDismissed] = useState(false);
   const draftIdRef = useRef<string | null>(null);
-  const savingRef = useRef(false);
+  const saveQueueRef = useRef<Promise<unknown>>(Promise.resolve());
+  const revisionRef = useRef(0);
+  const submittingRef = useRef(false);
 
   const communities = useQuery({
     queryKey: ["communities"],
@@ -94,55 +96,59 @@ export function PublicationEditorForm({
   }
 
   function markChanged() {
+    revisionRef.current += 1;
+    setRecoveryDismissed(true);
     setDirty(true);
     if (autosave !== "saving") setAutosave("idle");
   }
 
-  function draftPayload() {
-    return {
+  const saveDraftNow = useCallback(() => {
+    // Capture this revision before waiting for earlier writes. Publication
+    // queues its final snapshot behind autosave and waits for it to commit.
+    const revision = revisionRef.current;
+    const payload = {
       type,
       title,
       content: blocks,
-      tags: tagsArray(),
+      tags: tags.split(",").map((value) => value.trim()).filter(Boolean).slice(0, 20),
       community_id: communityId || null,
       source_publication_id: mode === "edit" ? initial?.id ?? null : null,
     };
-  }
-
-  async function saveDraftNow() {
-    if (savingRef.current) return draftIdRef.current;
-    savingRef.current = true;
-    setAutosave("saving");
-    try {
-      const existingId = draftIdRef.current;
-      const saved = await clientApi<PublicationDraft>(
-        existingId ? `/publication-drafts/${existingId}/` : "/publication-drafts/",
-        {
-          method: existingId ? "PATCH" : "POST",
-          body: JSON.stringify(draftPayload()),
-        },
-      );
-      draftIdRef.current = saved.id;
-      setDirty(false);
-      setAutosave("saved");
-      setSavedAt(saved.updated_at);
-      void queryClient.invalidateQueries({ queryKey: ["publication-drafts"] });
-      return saved.id;
-    } catch (err) {
-      setAutosave("error");
-      throw err;
-    } finally {
-      savingRef.current = false;
-    }
-  }
+    const save = saveQueueRef.current.catch(() => undefined).then(async () => {
+      setAutosave("saving");
+      try {
+        const existingId = draftIdRef.current;
+        const saved = await clientApi<PublicationDraft>(
+          existingId ? `/publication-drafts/${existingId}/` : "/publication-drafts/",
+          { method: existingId ? "PATCH" : "POST", body: JSON.stringify(payload) },
+        );
+        draftIdRef.current = saved.id;
+        if (revisionRef.current === revision) {
+          setDirty(false);
+          setAutosave("saved");
+        } else {
+          // A slow response must not mark newer edits as saved.
+          setAutosave("idle");
+        }
+        setSavedAt(saved.updated_at);
+        void queryClient.invalidateQueries({ queryKey: ["publication-drafts"] });
+        return saved.id;
+      } catch (err) {
+        setAutosave("error");
+        throw err;
+      }
+    });
+    saveQueueRef.current = save;
+    return save;
+  }, [blocks, communityId, initial?.id, mode, queryClient, tags, title, type]);
 
   useEffect(() => {
-    if (!dirty || busy || savingRef.current) return;
+    if (!dirty || busy) return;
     const timer = window.setTimeout(() => {
-      void saveDraftNow().catch(() => undefined);
+      if (!submittingRef.current) void saveDraftNow().catch(() => undefined);
     }, 1100);
     return () => window.clearTimeout(timer);
-  }, [blocks, busy, communityId, dirty, tags, title, type]);
+  }, [busy, dirty, saveDraftNow]);
 
   function restoreDraft(draft: PublicationDraft) {
     setType(draft.type);
@@ -166,8 +172,10 @@ export function PublicationEditorForm({
 
   async function submit(event: FormEvent) {
     event.preventDefault();
+    if (submittingRef.current) return;
     if (!normalized.length) { setError("Добавьте хотя бы один непустой блок."); return; }
     if (type !== "post" && !title.trim()) { setError("Для вопроса и статьи нужен заголовок."); return; }
+    submittingRef.current = true;
     setBusy(true);
     setError("");
     try {
@@ -181,6 +189,7 @@ export function PublicationEditorForm({
     } catch (err) {
       setError(errorMessage(err));
     } finally {
+      submittingRef.current = false;
       setBusy(false);
     }
   }
@@ -197,6 +206,7 @@ export function PublicationEditorForm({
 
   return (
     <form className="editor-panel publication-editor" onSubmit={submit}>
+      <fieldset disabled={busy} style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
       {recoverableDraft ? (
         <div className="draft-recovery">
           <div>
@@ -236,6 +246,7 @@ export function PublicationEditorForm({
         <span className="editor-status">{normalized.length} блоков · {pendingMedia.length} новых медиа</span>
         <button className="primary-button" disabled={busy}>{mode === "create" ? <Send size={15}/> : <Save size={15}/>} {busy ? "Сохраняем…" : mode === "create" ? "Опубликовать" : "Сохранить новую ревизию"}</button>
       </div>
+      </fieldset>
     </form>
   );
 }
