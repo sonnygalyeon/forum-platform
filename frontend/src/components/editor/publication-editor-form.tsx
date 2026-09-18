@@ -206,7 +206,7 @@ export function PublicationEditorForm({
 
   return (
     <form className="editor-panel publication-editor" onSubmit={submit}>
-      <fieldset disabled={busy} style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
+      <fieldset disabled={busy} style={{ border: 0, padding: 0, margin: 0, minWidth: 0, display: "flex", flexDirection: "column", gap: 18 }}>
       {recoverableDraft ? (
         <div className="draft-recovery">
           <div>
