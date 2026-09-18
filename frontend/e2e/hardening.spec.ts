@@ -98,7 +98,7 @@ test("publish waits for in-flight autosave and persists the latest editor revisi
   await saved;
   await page.getByPlaceholder("Сформулируйте вопрос").fill("Latest revision 117");
   await page.getByPlaceholder("Текст абзаца…").fill("Latest body 117");
-  const published = page.waitForResponse((response) => response.url().includes("/publish/") && response.request().method() === "POST");
+  const published = page.waitForResponse((response) => /\/publish\/?$/.test(response.url()) && response.request().method() === "POST" && response.status() !== 308);
   await page.getByRole("button", { name: "Опубликовать", exact: true }).click();
   await expect(page.getByPlaceholder("Сформулируйте вопрос")).toBeDisabled();
   releaseSave();
