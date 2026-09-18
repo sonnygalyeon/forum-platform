@@ -139,10 +139,10 @@ export function SearchExperience() {
           {(scope === "all" || scope === "publications") ? (
             <div className="search-filters">
               <span className="search-filter-label"><SlidersHorizontal size={14}/> Фильтры</span>
-              <label>Тип<select value={type} onChange={(event) => push({ type: event.target.value || null })}><option value="">Любой</option><option value="topic">Вопрос</option><option value="article">Статья</option><option value="post">Пост</option></select></label>
-              <label>Период<select value={date} onChange={(event) => push({ date: event.target.value })}><option value="any">За всё время</option><option value="day">24 часа</option><option value="week">7 дней</option><option value="month">30 дней</option><option value="year">Год</option></select></label>
-              <label>Сортировка<select value={sort} onChange={(event) => push({ sort: event.target.value })}><option value="relevance">По релевантности</option><option value="latest">Сначала новые</option></select></label>
-              <label>Ответ<select value={accepted} onChange={(event) => push({ accepted: event.target.value || null })}><option value="">Не важно</option><option value="yes">Есть принятый</option><option value="no">Без принятого</option></select></label>
+              <label>Тип<select aria-label="Тип" value={type} onChange={(event) => push({ type: event.target.value || null })}><option value="">Любой</option><option value="topic">Вопрос</option><option value="article">Статья</option><option value="post">Пост</option></select></label>
+              <label>Период<select aria-label="Период" value={date} onChange={(event) => push({ date: event.target.value })}><option value="any">За всё время</option><option value="day">24 часа</option><option value="week">7 дней</option><option value="month">30 дней</option><option value="year">Год</option></select></label>
+              <label>Сортировка<select aria-label="Сортировка" value={sort} onChange={(event) => push({ sort: event.target.value })}><option value="relevance">По релевантности</option><option value="latest">Сначала новые</option></select></label>
+              <label>Ответ<select aria-label="Ответ" value={accepted} onChange={(event) => push({ accepted: event.target.value || null })}><option value="">Не важно</option><option value="yes">Есть принятый</option><option value="no">Без принятого</option></select></label>
               {tag ? <button type="button" className="filter-chip active" onClick={() => push({ tag: null })}>#{tag} ×</button> : null}
             </div>
           ) : null}
