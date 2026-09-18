@@ -45,7 +45,7 @@ services:
       retries: 10
 
   minio-init:
-    image: minio/mc
+    image: quay.io/minio/mc
     env_file: [.env]
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-nightiris_dev_root}
