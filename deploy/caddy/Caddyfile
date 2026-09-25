@@ -28,22 +28,3 @@
 
     reverse_proxy frontend:3000
 }
-
-{$MEDIA_DOMAIN} {
-    encode zstd gzip
-
-    log {
-        output stdout
-        format json
-    }
-
-    header {
-        -Server
-        X-Content-Type-Options "nosniff"
-        X-Frame-Options "DENY"
-        Referrer-Policy "no-referrer"
-        Content-Security-Policy "default-src 'none'; frame-ancestors 'none'; sandbox"
-    }
-
-    reverse_proxy minio:9000
-}
