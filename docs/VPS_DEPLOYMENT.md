@@ -1,4 +1,4 @@
-# VPS deployment — Night Iris Forum 0.8.7
+# VPS deployment — Night Iris Forum
 
 Recommended starting point: a modern Linux VPS with Docker Engine + Compose plugin,
 public IPv4/IPv6, and DNS control for two hostnames.
