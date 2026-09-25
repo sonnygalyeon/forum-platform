@@ -7,7 +7,7 @@
 ## 1. Подготовить Docker
 
 Установите [Docker Desktop для Mac](https://docs.docker.com/desktop/setup/install/mac-install/)
-в варианте **Apple silicon** для MacBook M4. Откройте Docker Desktop и дождитесь
+в варианте **Apple silicon** для Mac на M1/M2/M3/M4 и новее. Откройте Docker Desktop и дождитесь
 готовности движка. Проверьте в терминале:
 
 ```bash
