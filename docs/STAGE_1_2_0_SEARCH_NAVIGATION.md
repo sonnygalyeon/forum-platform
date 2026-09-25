@@ -54,7 +54,7 @@ between pages. Out-of-range pages provide a return-to-first-page action.
 `sh scripts/dev_up.sh` now performs the documented update/start sequence,
 including named-volume npm dependency synchronization, migrations, readiness
 checks and Git build provenance. Existing environment and data volumes are
-preserved. MinIO server/client images are pinned to the last public upstream community releases on Docker Hub. The previously used untagged Quay images became access-controlled and broke reproducible local startup.
+preserved. MinIO server and client are built locally from the last upstream community release binaries published in the official GitHub releases. Both amd64 and arm64 downloads are pinned by SHA-256 in dedicated Dockerfiles, avoiding registry availability/authentication drift while keeping CI and Apple Silicon development reproducible.
 It is for local development and briefly stops application services.
 See LOCAL_DEVELOPMENT_RU.md for complete instructions and troubleshooting.
 
