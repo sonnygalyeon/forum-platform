@@ -60,7 +60,7 @@ jobs:
       - name: Build tagged production images
         run: >-
           docker compose --env-file .env.prod -f compose.prod.yaml
-          build api frontend
+          build minio minio-init api frontend
 
       - name: Build immutable release bundle
         run: |
