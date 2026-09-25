@@ -54,8 +54,7 @@ between pages. Out-of-range pages provide a return-to-first-page action.
 `sh scripts/dev_up.sh` now performs the documented update/start sequence,
 including named-volume npm dependency synchronization, migrations, readiness
 checks and Git build provenance. Existing environment and data volumes are
-preserved. MinIO client services use the upstream Quay image because the
-previous Docker Hub client image failed to pull in the full-stack check.
+preserved. MinIO server/client images are pinned to the last public upstream community releases on Docker Hub. The previously used untagged Quay images became access-controlled and broke reproducible local startup.
 It is for local development and briefly stops application services.
 See LOCAL_DEVELOPMENT_RU.md for complete instructions and troubleshooting.
 
