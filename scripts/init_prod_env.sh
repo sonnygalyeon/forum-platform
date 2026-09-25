@@ -1,4 +1,3 @@
-
 #!/bin/sh
 set -eu
 
@@ -9,8 +8,6 @@ fi
 
 printf "Main domain (example: forum.example.com): "
 read APP_DOMAIN
-printf "Media domain (example: media.forum.example.com): "
-read MEDIA_DOMAIN
 printf "ACME email: "
 read ACME_EMAIL
 
@@ -19,32 +16,28 @@ case "$ACME_EMAIL" in
   *) echo "ACME email must look like name@example.com" >&2; exit 1 ;;
 esac
 
-python - "$APP_DOMAIN" "$MEDIA_DOMAIN" "$ACME_EMAIL" <<'PYENV'
+python - "$APP_DOMAIN" "$ACME_EMAIL" <<'PYENV'
 from pathlib import Path
 import secrets
 import sys
 
-app_domain, media_domain, email = sys.argv[1:]
-template = Path('.env.prod.example').read_text()
+app_domain, email = sys.argv[1:]
+template = Path(".env.prod.example").read_text()
 replacements = {
-    'media.forum.example.com': media_domain,
-    'forum.example.com': app_domain,
-    'admin@example.com': email,
-    'replace-with-a-long-random-secret': secrets.token_urlsafe(64),
-    'replace-with-another-long-random-secret': secrets.token_urlsafe(64),
-    'replace-with-a-strong-database-password': secrets.token_urlsafe(36),
-    'replace-with-a-minio-root-user': 'root' + secrets.token_hex(12),
-    'replace-with-a-minio-root-password': secrets.token_urlsafe(48),
-    'replace-with-a-long-access-key': 'app' + secrets.token_hex(12),
-    'replace-with-a-long-secret-key': secrets.token_urlsafe(48),
-    'replace-with-a-long-metrics-token': secrets.token_urlsafe(48),
+    "forum.example.com": app_domain,
+    "admin@example.com": email,
+    "replace-with-a-long-random-secret": secrets.token_urlsafe(64),
+    "replace-with-another-long-random-secret": secrets.token_urlsafe(64),
+    "replace-with-a-strong-database-password": secrets.token_urlsafe(36),
+    "replace-with-a-long-metrics-token": secrets.token_urlsafe(48),
 }
 for old in sorted(replacements, key=len, reverse=True):
     template = template.replace(old, replacements[old])
-Path('.env.prod').write_text(template)
+Path(".env.prod").write_text(template)
 PYENV
 
 chmod 600 .env.prod
 
-echo "Created .env.prod with NEW generated secrets."
-echo "Review it, then run: ./scripts/prod_config_check.sh"
+echo "Created .env.prod with new application/database secrets."
+echo "Now fill the external S3 endpoint, bucket and least-privilege credentials."
+echo "Then run: ./scripts/prod_config_check.sh .env.prod"
