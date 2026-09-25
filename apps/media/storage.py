@@ -21,7 +21,7 @@ def _client(endpoint_url):
         aws_secret_access_key=settings.S3_SECRET_KEY,
         config=Config(
             signature_version="s3v4",
-            s3={"addressing_style": "path"},
+            s3={"addressing_style": settings.S3_ADDRESSING_STYLE},
         ),
     )
 
