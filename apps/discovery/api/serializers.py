@@ -19,6 +19,20 @@ class SearchCountsSerializer(serializers.Serializer):
     tags = serializers.IntegerField(min_value=0)
 
 
+class SearchPageQuerySerializer(serializers.Serializer):
+    page = serializers.IntegerField(min_value=1, max_value=2147483647, default=1)
+    page_size = serializers.IntegerField(min_value=1, max_value=50, required=False)
+
+
+class SearchPaginationSerializer(serializers.Serializer):
+    page = serializers.IntegerField(min_value=1)
+    page_size = serializers.IntegerField(min_value=1, max_value=50)
+    total_pages = serializers.IntegerField(min_value=1)
+    total_results = serializers.IntegerField(min_value=0)
+    has_next = serializers.BooleanField()
+    has_previous = serializers.BooleanField()
+
+
 class SearchResponseSerializer(serializers.Serializer):
     query = serializers.CharField()
     scope = serializers.CharField()
@@ -27,6 +41,7 @@ class SearchResponseSerializer(serializers.Serializer):
     users = UserProfileSerializer(many=True)
     communities = CommunitySerializer(many=True)
     tags = SearchTagSerializer(many=True)
+    pagination = SearchPaginationSerializer(required=False, allow_null=True)
 
 
 class DiscoveryResponseSerializer(serializers.Serializer):

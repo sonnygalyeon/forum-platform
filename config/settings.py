@@ -201,6 +201,9 @@ S3_ACCESS_KEY = os.environ["S3_ACCESS_KEY"]
 S3_SECRET_KEY = os.environ["S3_SECRET_KEY"]
 S3_BUCKET = os.environ.get("S3_BUCKET", "forum-media")
 S3_REGION = os.environ.get("S3_REGION", "us-east-1")
+S3_ADDRESSING_STYLE = os.environ.get("S3_ADDRESSING_STYLE", "path").strip().lower()
+if S3_ADDRESSING_STYLE not in {"path", "virtual"}:
+    raise RuntimeError("S3_ADDRESSING_STYLE must be 'path' or 'virtual'.")
 S3_INTERNAL_ENDPOINT = os.environ["S3_INTERNAL_ENDPOINT"]
 S3_PUBLIC_ENDPOINT = os.environ["S3_PUBLIC_ENDPOINT"]
 S3_PRESIGNED_EXPIRES = int(os.environ.get("S3_PRESIGNED_EXPIRES", "900"))

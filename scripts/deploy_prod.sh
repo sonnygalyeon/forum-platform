@@ -24,17 +24,20 @@ export SENTRY_RELEASE="night-iris@$APP_VERSION"
 
 docker run --rm \
   -e APP_DOMAIN=forum.example.com \
-  -e MEDIA_DOMAIN=media.forum.example.com \
   -e ACME_EMAIL=admin@example.com \
   -v "$PWD/deploy/caddy/Caddyfile:/etc/caddy/Caddyfile:ro" \
   caddy:2-alpine caddy validate --config /etc/caddy/Caddyfile
 
-if [ "${BACKUP_BEFORE_DEPLOY:-1}" = "1" ]; then
-  ./scripts/backup_all.sh
-fi
-
-$COMPOSE pull db redis minio caddy
+$COMPOSE pull db redis caddy
 $COMPOSE build api frontend
+
+if [ "${BACKUP_BEFORE_DEPLOY:-1}" = "1" ]; then
+  if [ -f "$CURRENT_FILE" ]; then
+    ./scripts/backup_all.sh
+  else
+    echo "First deployment: no previous production release is recorded, so pre-deploy backup is skipped."
+  fi
+fi
 
 # Run deployment checks against the exact tagged backend image that will serve traffic.
 $COMPOSE run --rm --no-deps api \
@@ -48,8 +51,7 @@ fi
 
 # Database migrations happen before switching application containers. Rollback
 # never reverses migrations automatically; schema compatibility is a release responsibility.
-$COMPOSE up -d db redis minio
-$COMPOSE run --rm minio-init
+$COMPOSE up -d db redis
 $COMPOSE run --rm migrate
 $COMPOSE up -d --remove-orphans api worker beat frontend caddy
 

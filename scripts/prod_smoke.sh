@@ -25,14 +25,6 @@ fi
 APP_HEADERS="$(curl -fsSI "https://$APP_DOMAIN/")"
 printf '%s\n' "$APP_HEADERS" | grep -qi '^strict-transport-security:'
 printf '%s\n' "$APP_HEADERS" | grep -qi '^x-content-type-options: nosniff'
-printf '%s\n' "$APP_HEADERS" | grep -qi '^content-security-policy-report-only:'
+printf '%s\n' "$APP_HEADERS" | grep -qi '^content-security-policy:'
 
-# Media root may legitimately return a non-2xx response, but headers must still
-# prevent browser execution if the endpoint is reachable.
-MEDIA_HEADERS="$(curl -sSI "https://$MEDIA_DOMAIN/" || true)"
-if [ -n "$MEDIA_HEADERS" ]; then
-  printf '%s\n' "$MEDIA_HEADERS" | grep -qi '^x-content-type-options: nosniff'
-  printf '%s\n' "$MEDIA_HEADERS" | grep -qi '^content-security-policy:'
-fi
-
-echo "Production smoke checks passed: frontend, live, ready, release provenance, security headers."
+echo "Production smoke checks passed: frontend, live, ready, release provenance, enforced security headers."

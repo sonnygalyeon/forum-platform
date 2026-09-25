@@ -68,22 +68,28 @@ fi
 require_len DJANGO_SECRET_KEY 48
 require_len JWT_SIGNING_KEY 48
 require_len POSTGRES_PASSWORD 24
-require_len MINIO_ROOT_PASSWORD 32
-require_len S3_SECRET_KEY 32
+require_len S3_ACCESS_KEY 8
+require_len S3_SECRET_KEY 24
 
-MINIO_ROOT_USER="$(value MINIO_ROOT_USER)"
-S3_ACCESS_KEY="$(value S3_ACCESS_KEY)"
-if [ "$MINIO_ROOT_USER" = "$S3_ACCESS_KEY" ]; then
-  echo "ERROR: MinIO root and application access keys must be different." >&2
-  exit 1
-fi
+S3_BUCKET="$(value S3_BUCKET)"
+[ -n "$S3_BUCKET" ] || { echo "ERROR: S3_BUCKET is required." >&2; exit 1; }
 
-MINIO_ROOT_PASSWORD="$(value MINIO_ROOT_PASSWORD)"
-S3_SECRET_KEY="$(value S3_SECRET_KEY)"
-if [ "$MINIO_ROOT_PASSWORD" = "$S3_SECRET_KEY" ]; then
-  echo "ERROR: MinIO root and application secret keys must be different." >&2
-  exit 1
-fi
+S3_INTERNAL_ENDPOINT="$(value S3_INTERNAL_ENDPOINT)"
+S3_PUBLIC_ENDPOINT="$(value S3_PUBLIC_ENDPOINT)"
+case "$S3_INTERNAL_ENDPOINT" in
+  https://*) ;;
+  *) echo "ERROR: S3_INTERNAL_ENDPOINT must use https in production." >&2; exit 1 ;;
+esac
+case "$S3_PUBLIC_ENDPOINT" in
+  https://*) ;;
+  *) echo "ERROR: S3_PUBLIC_ENDPOINT must use https in production." >&2; exit 1 ;;
+esac
+
+S3_ADDRESSING_STYLE="$(value S3_ADDRESSING_STYLE)"
+case "$S3_ADDRESSING_STYLE" in
+  path|virtual) ;;
+  *) echo "ERROR: S3_ADDRESSING_STYLE must be path or virtual." >&2; exit 1 ;;
+esac
 
 ACME_EMAIL="$(value ACME_EMAIL)"
 case "$ACME_EMAIL" in

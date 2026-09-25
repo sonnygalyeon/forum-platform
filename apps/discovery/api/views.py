@@ -1,10 +1,11 @@
 from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework.permissions import AllowAny
+from rest_framework.exceptions import NotFound
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.communities.api.serializers import CommunitySerializer
-from apps.discovery.api.serializers import DiscoveryResponseSerializer, SearchResponseSerializer, SearchTagSerializer
+from apps.discovery.api.serializers import DiscoveryResponseSerializer, SearchPageQuerySerializer, SearchResponseSerializer, SearchTagSerializer
 from apps.discovery.selectors import (
     VALID_DATES,
     VALID_SCOPES,
@@ -28,6 +29,8 @@ SEARCH_PARAMETERS = [
     OpenApiParameter("sort", str, enum=sorted(VALID_SORTS), default="relevance"),
     OpenApiParameter("accepted", str, enum=["yes", "no"], description="Filter topics by accepted-answer state."),
     OpenApiParameter("tag", str, description="Exact tag slug filter for publications."),
+    OpenApiParameter("page", int, description="1-based page in a single scope. Ignored for scope=all.", default=1),
+    OpenApiParameter("page_size", int, description="Single-scope page size (1–50). Defaults to 30, or 40 for tags. Ignored for scope=all."),
 ]
 
 
@@ -40,6 +43,11 @@ class SearchView(APIView):
         scope = request.query_params.get("scope", "all")
         if scope not in VALID_SCOPES:
             scope = "all"
+        page_values = {}
+        if scope != "all":
+            page_query = SearchPageQuerySerializer(data=request.query_params)
+            page_query.is_valid(raise_exception=True)
+            page_values = page_query.validated_data
         date = request.query_params.get("date", "any")
         if date not in VALID_DATES:
             date = "any"
@@ -71,18 +79,32 @@ class SearchView(APIView):
         }
 
         all_scope = scope == "all"
-        section_limit = 6 if all_scope else 30
+        page = page_values.get("page", 1)
+        section_limit = 6 if all_scope else page_values.get("page_size", 40 if scope == "tags" else 30)
+        offset = 0 if all_scope else (page - 1) * section_limit
+        pagination = None
+        if not all_scope:
+            total = counts[scope]
+            total_pages = max(1, (total + section_limit - 1) // section_limit)
+            if page > total_pages:
+                raise NotFound("Search page is out of range.")
+            pagination = {
+                "page": page, "page_size": section_limit,
+                "total_pages": total_pages, "total_results": total,
+                "has_next": page < total_pages, "has_previous": page > 1,
+            }
 
-        publication_items = publications[:section_limit] if scope in {"all", "publications"} else []
-        user_items = users[:section_limit] if scope in {"all", "users"} else []
-        community_items = communities[:section_limit] if scope in {"all", "communities"} else []
-        tag_items = tags[:12 if all_scope else 40] if scope in {"all", "tags"} else []
+        publication_items = publications[offset:offset + section_limit] if scope in {"all", "publications"} else []
+        user_items = users[offset:offset + section_limit] if scope in {"all", "users"} else []
+        community_items = communities[offset:offset + section_limit] if scope in {"all", "communities"} else []
+        tag_items = tags[offset:12 if all_scope else offset + section_limit] if scope in {"all", "tags"} else []
 
         return Response(
             {
                 "query": query,
                 "scope": scope,
                 "counts": counts,
+                "pagination": pagination,
                 "publications": PublicationListSerializer(publication_items, many=True, context={"request": request}).data,
                 "users": UserProfileSerializer(user_items, many=True, context={"request": request}).data,
                 "communities": CommunitySerializer(community_items, many=True, context={"request": request}).data,
