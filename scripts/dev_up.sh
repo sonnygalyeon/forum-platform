@@ -28,7 +28,7 @@ export BUILD_SHA
 
 # Build before stopping the application. Existing .env and named data volumes
 # are kept. Never change project name or delete volumes during an update.
-compose build api migrate worker beat frontend
+compose build minio minio-init api migrate worker beat frontend
 compose stop frontend api worker beat
 compose up -d --wait --wait-timeout 120 db redis minio
 compose run --rm --no-deps minio-init
