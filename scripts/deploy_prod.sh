@@ -33,8 +33,8 @@ if [ "${BACKUP_BEFORE_DEPLOY:-1}" = "1" ]; then
   ./scripts/backup_all.sh
 fi
 
-$COMPOSE pull db redis minio caddy
-$COMPOSE build api frontend
+$COMPOSE pull db redis caddy
+$COMPOSE build minio minio-init api frontend
 
 # Run deployment checks against the exact tagged backend image that will serve traffic.
 $COMPOSE run --rm --no-deps api \
