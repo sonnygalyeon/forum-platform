@@ -18,8 +18,7 @@ docker info
 ```
 
 Нужна актуальная версия Docker Compose v2 с поддержкой `up --wait`.
-Python 3.13, Node.js 24, PostgreSQL 18, Redis 8 и MinIO запускаются в контейнерах;
-устанавливать их отдельно на Mac для этого способа не требуется.
+Python 3.13, Node.js 24, PostgreSQL 18, Redis 8 и MinIO запускаются в контейнерах; устанавливать их отдельно на Mac для этого способа не требуется. MinIO server/client собираются из закреплённых официальных release binaries с проверкой SHA-256 для amd64/arm64, поэтому Docker login к MinIO registry не нужен.
 
 ## 2. Обновить существующую папку
 
