@@ -8,7 +8,7 @@ HOST_DEST="backups/object-storage/forum-media-$BACKUP_SET_ID"
 CONTAINER_DEST="/backup/forum-media-$BACKUP_SET_ID"
 MANIFEST_DIR="backups/manifests"
 CHECKSUM_FILE="$MANIFEST_DIR/$BACKUP_SET_ID.object-storage.sha256"
-COMPOSE="docker compose --env-file $ENV_FILE -f compose.prod.yaml"
+compose() { docker compose --env-file "$ENV_FILE" -f compose.prod.yaml "$@"; }
 
 mkdir -p backups/object-storage "$MANIFEST_DIR"
 
@@ -16,7 +16,9 @@ if [ -z "${APP_IMAGE_TAG:-}" ] && [ -f .deploy/current-tag ]; then
   export APP_IMAGE_TAG="$(cat .deploy/current-tag)"
 fi
 
-$COMPOSE run --rm --no-deps storage-tool backup "$CONTAINER_DEST"
+# The production image runs as UID 10001; the bind mount belongs to the host
+# operator. Use that operator's UID/GID so backups remain writable/readable.
+compose run --rm --no-deps --user "$(id -u):$(id -g)" storage-tool backup "$CONTAINER_DEST"
 
 test -d "$HOST_DEST"
 : > "$CHECKSUM_FILE"

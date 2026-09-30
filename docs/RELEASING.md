@@ -57,16 +57,29 @@ The check deliberately rejects placeholder secrets, insecure cookie/SSL settings
 
 ## 4. Backup before deployment
 
-Backups are enabled by default in the deployment script. They cover PostgreSQL and MinIO according to the existing backup tooling.
+Backups cover PostgreSQL and the configured external S3 bucket. They run by
+default before updates to a recorded deployment. On the first deployment,
+there is no previous release to back up.
 
 To verify backups explicitly before changing production:
 
 ```bash
+BACKUP_SET_ID="$(date -u +%Y%m%dT%H%M%SZ)"
+export BACKUP_SET_ID
 ./scripts/backup_all.sh
-./scripts/verify_backup.sh
+./scripts/verify_backup.sh "$BACKUP_SET_ID"
 ```
 
-Do not disable pre-deploy backup merely to make a release faster. Computers are excellent at remembering that decision at the least convenient moment.
+The set manifest lives in `backups/manifests/<set-id>.env`. It references the
+database dump and `backups/object-storage/forum-media-<set-id>/`, including a
+JSON object manifest and SHA-256 checksums. An empty bucket still has a manifest.
+The storage helper uses the host operator's UID/GID for the bind-mounted files.
+Copy the complete `backups/` tree off the VPS, preserving its relative paths.
+
+Database and object backups are taken sequentially. For a consistent recovery
+point, suspend application writes and workers during the backup window. This
+tool copies current object bytes, not historical versions, ACLs, provider
+configuration or object metadata; configure the target bucket and CORS separately.
 
 ## 5. Deploy
 
@@ -96,7 +109,10 @@ The production smoke test checks:
 - `/api/v1/version/`;
 - expected version and full Git SHA;
 - browser security headers;
-- media-domain execution protections when reachable.
+
+Media is served directly by the configured S3 provider. Check a real browser
+upload/download separately: the application smoke check cannot validate the
+provider's CORS or browser response headers.
 
 Manual provenance check:
 
@@ -126,7 +142,7 @@ Inspect at minimum:
 - upload scanning/rejection failures if scanner enforcement is enabled;
 - Sentry events under the expected release name.
 
-A successful `docker compose up` is not the same thing as a successful release. Containers are famously willing to be alive while accomplishing nothing useful.
+Record the successful smoke output and the deployed version/build SHA.
 
 ## Rollback
 
@@ -152,10 +168,20 @@ If a migration is destructive and not backwards-compatible, application rollback
 Use the existing restore scripts only with an identified, verified backup:
 
 ```bash
-./scripts/restore_all.sh ...
+RESTORE_CONFIRM=YES ./scripts/restore_all.sh <backup-set-id>
 ```
 
-See the backup/restore documentation and script help before performing destructive recovery on production data.
+This stops application services, replaces the database, restores saved object
+bytes and removes extra current objects from the configured bucket. The bucket
+must match the backup manifest. Full file and manifest validation runs before
+database changes; an S3/provider failure during restore still requires operator
+recovery. On a fresh recovery host, restore `.env.prod`, build/select the
+compatible backend image with `APP_IMAGE_TAG`, start the database, and copy the
+complete backup tree before running the command.
+
+Old sets using `MINIO_DIR` and `backups/minio/` have a different format. They are
+rejected before database writes. Restore them with the corresponding historical
+tooling in isolation, then transfer the recovered objects and create a new set.
 
 ## Patch releases
 

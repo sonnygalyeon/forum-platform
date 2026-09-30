@@ -240,6 +240,32 @@ jobs:
           sh scripts/dev_up.sh
           curl -fsS http://127.0.0.1:3000/ >/dev/null
           curl -fsS http://127.0.0.1:8000/api/v1/ready/
+      - name: Round-trip object storage on the isolated local stack
+        run: |
+          docker compose exec -T api python - <<'PY'
+          import os
+          from pathlib import Path
+          from tempfile import TemporaryDirectory
+          from scripts.object_storage_transfer import backup, client, restore, validate_backup
+
+          s3 = client()
+          bucket = os.environ["S3_BUCKET"]
+          expected = {"ci-backup/a.txt": b"alpha", "ci-backup/nested/b.txt": b"beta"}
+          for key, body in expected.items():
+              s3.put_object(Bucket=bucket, Key=key, Body=body)
+          with TemporaryDirectory() as directory:
+              snapshot = Path(directory) / "snapshot"
+              backup(snapshot)
+              assert len(validate_backup(snapshot)) == len(expected)
+              s3.delete_object(Bucket=bucket, Key="ci-backup/a.txt")
+              s3.put_object(Bucket=bucket, Key="ci-backup/extra.txt", Body=b"extra")
+              restore(snapshot, remove_extra=True)
+              actual = s3.list_objects_v2(Bucket=bucket).get("Contents", [])
+              assert {item["Key"] for item in actual} == set(expected)
+              for key, body in expected.items():
+                  assert s3.get_object(Bucket=bucket, Key=key)["Body"].read() == body
+          print("Object storage backup/verify/restore round trip passed.")
+          PY
       - name: Show development service logs on failure
         if: failure()
         run: docker compose logs --tail=100

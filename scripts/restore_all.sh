@@ -10,6 +10,10 @@ if [ "${RESTORE_CONFIRM:-}" != "YES" ]; then
   exit 1
 fi
 
+export ENV_FILE
+if [ -z "${APP_IMAGE_TAG:-}" ] && [ -f .deploy/current-tag ]; then
+  export APP_IMAGE_TAG="$(cat .deploy/current-tag)"
+fi
 ./scripts/verify_backup.sh "$BACKUP_SET_ID"
 set -a
 . "$MANIFEST"
@@ -19,7 +23,7 @@ COMPOSE="docker compose --env-file $ENV_FILE -f compose.prod.yaml"
 $COMPOSE stop caddy frontend api worker beat migrate || true
 
 RESTORE_CONFIRM=YES ./scripts/restore_postgres.sh "$POSTGRES_DUMP"
-RESTORE_CONFIRM=YES ./scripts/restore_minio.sh "$MINIO_DIR"
+RESTORE_CONFIRM=YES ./scripts/restore_minio.sh "$OBJECT_STORAGE_DIR"
 
 $COMPOSE run --rm migrate
 $COMPOSE up -d api worker beat frontend caddy

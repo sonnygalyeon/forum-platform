@@ -2,6 +2,7 @@
 set -eu
 
 ENV_FILE="${ENV_FILE:-.env.prod}"
+case "$ENV_FILE" in */*) ;; *) ENV_FILE="./$ENV_FILE" ;; esac
 RETENTION_DAYS="${BACKUP_RETENTION_DAYS:-14}"
 BACKUP_SET_ID="${BACKUP_SET_ID:-$(date -u +%Y%m%dT%H%M%SZ)}"
 DIR="backups/postgres"

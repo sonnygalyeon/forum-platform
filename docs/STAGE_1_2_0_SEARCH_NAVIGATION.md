@@ -58,6 +58,18 @@ preserved. MinIO server and client are built locally from the last upstream comm
 It is for local development and briefly stops application services.
 See LOCAL_DEVELOPMENT_RU.md for complete instructions and troubleshooting.
 
+Production uses an external S3-compatible service configured in `.env.prod`;
+the VPS serves the application domain, while presigned media requests go to the
+provider endpoint. The VPS and release runbooks describe bucket permissions,
+CORS, and the transition from a previous local MinIO installation.
+
+The complete backup/restore pipeline uses `backups/object-storage/` and a
+versioned set manifest. It runs the storage helper with the host operator's
+UID/GID, verifies all object hashes and manifest entries before any restore
+writes, and reports partial S3 deletion failures. Legacy MinIO snapshots are
+rejected before modifying the database; they require their original restore
+tooling or an explicit migration.
+
 ## Validation
 
 - Backend tests cover all scopes, stable timestamp/name ties, first/last pages,
@@ -65,7 +77,10 @@ See LOCAL_DEVELOPMENT_RU.md for complete instructions and troubleshooting.
 - Browser tests exercise real BFF/API/DB search, page transitions, browser
   history, reload, scope/filter changes, anonymous browsing and error recovery.
 - The CI development-compose job executes the same startup script with the real
-  PostgreSQL/Redis/MinIO stack and checks frontend/backend readiness.
+  PostgreSQL/Redis/MinIO stack, checks frontend/backend readiness and round-trips
+  a two-object backup/verify/restore using the production storage helper.
+- Backup regressions cover matching component paths, host file ownership,
+  complete preflight validation, corrupt/legacy snapshots and partial S3 errors.
 - Existing CI, Load Gate and Release Candidate Gate remain required on the
   exact commit promoted to `ver1.2-discovery`.
 

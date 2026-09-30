@@ -97,13 +97,13 @@ def backup(destination: Path) -> None:
     print(f"Object storage backup complete: {len(manifest_objects)} objects")
 
 
-def restore(source: Path, *, remove_extra: bool) -> None:
+def validate_backup(source: Path) -> list[tuple[dict, Path]]:
     manifest_path = source / "manifest.json"
     if not manifest_path.is_file():
         raise RuntimeError(f"Missing backup manifest: {manifest_path}")
 
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    if manifest.get("format") != 1:
+    if not isinstance(manifest, dict) or manifest.get("format") != 1:
         raise RuntimeError("Unsupported object-storage backup format")
 
     bucket = os.environ["S3_BUCKET"]
@@ -112,21 +112,44 @@ def restore(source: Path, *, remove_extra: bool) -> None:
             f"Backup bucket {manifest.get('bucket')!r} does not match configured {bucket!r}"
         )
 
-    s3 = client()
-    s3.head_bucket(Bucket=bucket)
+    objects = manifest.get("objects")
+    if (
+        not isinstance(objects, list)
+        or type(manifest.get("object_count")) is not int
+        or manifest["object_count"] != len(objects)
+    ):
+        raise RuntimeError("Object-storage manifest has an invalid object list/count")
 
+    validated = []
     expected_keys: set[str] = set()
-    for item in manifest.get("objects", []):
-        key = item["key"]
+    for item in objects:
+        if not isinstance(item, dict):
+            raise RuntimeError("Invalid object-storage manifest entry")
+        key = item.get("key")
+        if not isinstance(key, str) or not key or key in expected_keys:
+            raise RuntimeError("Object-storage manifest contains an invalid or duplicate key")
         expected_keys.add(key)
         local = safe_path(source / "objects", key)
         if not local.is_file():
             raise RuntimeError(f"Missing backed-up object: {key!r}")
-        if local.stat().st_size != int(item["size"]):
+        if type(item.get("size")) is not int or local.stat().st_size != item["size"]:
             raise RuntimeError(f"Backup size mismatch: {key!r}")
-        if sha256_file(local) != item["sha256"]:
+        if sha256_file(local) != item.get("sha256"):
             raise RuntimeError(f"Backup checksum mismatch: {key!r}")
-        s3.upload_file(str(local), bucket, key)
+        validated.append((item, local))
+    return validated
+
+
+def restore(source: Path, *, remove_extra: bool) -> None:
+    # Complete validation before the first remote write, including for empty
+    # buckets. A truncated manifest must never be interpreted as an empty backup.
+    validated = validate_backup(source)
+    bucket = os.environ["S3_BUCKET"]
+    s3 = client()
+    s3.head_bucket(Bucket=bucket)
+    expected_keys = {item["key"] for item, _ in validated}
+    for item, local in validated:
+        s3.upload_file(str(local), bucket, item["key"])
 
     if remove_extra:
         current_keys = {item["key"] for item in list_objects(s3, bucket)}
@@ -134,10 +157,12 @@ def restore(source: Path, *, remove_extra: bool) -> None:
         for start in range(0, len(extras), 1000):
             chunk = extras[start : start + 1000]
             if chunk:
-                s3.delete_objects(
+                result = s3.delete_objects(
                     Bucket=bucket,
                     Delete={"Objects": [{"Key": key} for key in chunk], "Quiet": True},
                 )
+                if result.get("Errors"):
+                    raise RuntimeError(f"Failed to remove extra S3 objects: {result['Errors']!r}")
 
     print(
         f"Object storage restore complete: {len(expected_keys)} objects"
@@ -152,6 +177,9 @@ def main() -> None:
     backup_parser = sub.add_parser("backup")
     backup_parser.add_argument("destination", type=Path)
 
+    verify_parser = sub.add_parser("verify")
+    verify_parser.add_argument("source", type=Path)
+
     restore_parser = sub.add_parser("restore")
     restore_parser.add_argument("source", type=Path)
     restore_parser.add_argument("--remove-extra", action="store_true")
@@ -159,6 +187,9 @@ def main() -> None:
     args = parser.parse_args()
     if args.command == "backup":
         backup(args.destination)
+    elif args.command == "verify":
+        validated = validate_backup(args.source)
+        print(f"Object storage backup verification complete: {len(validated)} objects")
     else:
         restore(args.source, remove_extra=args.remove_extra)
 

@@ -2,6 +2,7 @@
 set -eu
 
 ENV_FILE="${ENV_FILE:-.env.prod}"
+case "$ENV_FILE" in */*) ;; *) ENV_FILE="./$ENV_FILE" ;; esac
 DUMP_FILE="${1:?usage: RESTORE_CONFIRM=YES restore_postgres.sh DUMP_FILE}"
 
 if [ "${RESTORE_CONFIRM:-}" != "YES" ]; then

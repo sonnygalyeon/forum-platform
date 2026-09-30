@@ -13,12 +13,13 @@ export ENV_FILE BACKUP_SET_ID
 ./scripts/backup_minio.sh
 
 cat > "$MANIFEST" <<EOF
+BACKUP_FORMAT=2
 BACKUP_SET_ID=$BACKUP_SET_ID
 CREATED_AT_UTC=$BACKUP_SET_ID
 POSTGRES_DUMP=backups/postgres/forum-$BACKUP_SET_ID.dump
 POSTGRES_SHA256=backups/postgres/forum-$BACKUP_SET_ID.dump.sha256
-MINIO_DIR=backups/minio/forum-media-$BACKUP_SET_ID
-MINIO_SHA256=$MANIFEST_DIR/$BACKUP_SET_ID.minio.sha256
+OBJECT_STORAGE_DIR=backups/object-storage/forum-media-$BACKUP_SET_ID
+OBJECT_STORAGE_SHA256=$MANIFEST_DIR/$BACKUP_SET_ID.object-storage.sha256
 EOF
 
 ./scripts/verify_backup.sh "$BACKUP_SET_ID"
