@@ -146,7 +146,7 @@ def main():
         assert parsed.scheme == "https" and parsed.netloc == media_host
         headers, _ = request(parsed.path, media=True, method="OPTIONS", headers={
             "Access-Control-Request-Method": "PUT", "Access-Control-Request-Headers": "content-type",
-        })
+        }, expected=204)
         assert headers["Access-Control-Allow-Origin"] == app_origin
         headers, _ = request(parsed.path + "?" + parsed.query, media=True, method="PUT", data=content)
         assert headers["Access-Control-Allow-Origin"] == app_origin
@@ -170,6 +170,7 @@ def main():
             if asset.upload_id:
                 abort_multipart_upload(object_key=asset.object_key, upload_id=asset.upload_id)
             delete_object(object_key=asset.object_key)
+            asset.delete()
         User.objects.filter(nickname=nickname).delete()
 
 
