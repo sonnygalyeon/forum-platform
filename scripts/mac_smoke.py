@@ -65,6 +65,9 @@ def request(path, *, method="GET", data=None, headers=None, media=False, expecte
 
 
 def api(path, data=None, expected=200):
+    # Next.js canonical routes have no trailing slash; Django's direct routes do.
+    if path.startswith("/api/forum/"):
+        path = path.rstrip("/")
     _, body = request(path, method="POST" if data is not None else "GET", data=data, expected=expected)
     return json.loads(body)
 
@@ -105,7 +108,7 @@ def main():
         request("/api/v1/live/", headers={"X-Forwarded-Host": "untrusted.example"})
         headers, _ = request("/", headers={"X-Forwarded-Proto": "http"}, expected=308)
         assert headers["Location"] == app_origin + "/"
-        request("/api/schema/", expected=404)
+        request("/api/schema", expected=404)
         request("/api/v1/observability/metrics/", expected=404)
 
         headers, _ = request("/api/auth/register", method="POST", data={
@@ -122,7 +125,7 @@ def main():
         me = api("/api/forum/users/me/")
         assert me["nickname"] == nickname
         cookies.clear()
-        request("/api/forum/users/me/", expected=401)
+        request("/api/forum/users/me", expected=401)
         headers, _ = request("/api/auth/login", method="POST", data={"nickname": nickname, "password": password})
         for cookie in headers.get_all("Set-Cookie", []):
             cookies.load(cookie)
