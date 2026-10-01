@@ -239,9 +239,8 @@ jobs:
         run: |
           sh -n scripts/mac_server.sh
           sh scripts/mac_server.sh init
-          sh scripts/mac_server.sh compose run --rm --no-deps tunnel-app tunnel --help > /tmp/cloudflared-help.txt
-          grep -q -- '--protocol' /tmp/cloudflared-help.txt
-          grep -q -- '--url' /tmp/cloudflared-help.txt
+          sh scripts/mac_server.sh compose run --rm --no-deps tunnel-app \
+            tunnel --no-autoupdate --protocol http2 --url http://gateway:8080 --help >/dev/null
           sh scripts/mac_server.sh start --domains forum.example.test files.example.test
       - name: Check actual proxy, authentication, WebSocket and storage routes
         run: sh scripts/mac_server.sh compose exec -T api python scripts/mac_smoke.py
