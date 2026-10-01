@@ -85,6 +85,16 @@ frontend dependencies and verifies readiness. Open http://localhost:3000.
 See [the detailed Russian update/start guide](docs/LOCAL_DEVELOPMENT_RU.md)
 for fetching the branch, preserving local edits, first startup and troubleshooting.
 
+## Public demo from a Mac
+
+With Docker Desktop running, use `sh scripts/mac_server.sh start` to build
+the production application and obtain temporary public HTTPS addresses.
+The demo has its own database, uploads and generated secrets. Stop it with
+`sh scripts/mac_server.sh stop`; data is preserved.
+
+See [the Mac server guide in Russian](docs/MAC_SERVER_RU.md) for setup,
+administrator creation, keeping the Mac awake and tunnel troubleshooting.
+
 ## API
 
 Base path:

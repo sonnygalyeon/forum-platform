@@ -230,6 +230,44 @@ jobs:
           caddy:2-alpine
           caddy validate --config /etc/caddy/Caddyfile
 
+  mac-server:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Start the isolated production-mode Mac demo without public tunnels
+        run: |
+          sh -n scripts/mac_server.sh
+          sh scripts/mac_server.sh start --domains forum.example.test files.example.test
+      - name: Check actual proxy, authentication, WebSocket and storage routes
+        run: sh scripts/mac_server.sh compose exec -T api python scripts/mac_smoke.py
+      - name: Verify private port bindings and persistent credentials
+        run: |
+          sh scripts/mac_server.sh compose config --format json > /tmp/mac-compose.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          config = json.loads(Path('/tmp/mac-compose.json').read_text())
+          for name, service in config['services'].items():
+              ports = service.get('ports', [])
+              if name == 'gateway':
+                  assert len(ports) == 2
+                  assert all(p['host_ip'] == '127.0.0.1' for p in ports)
+              else:
+                  assert not ports, name
+          env = Path('.env.mac')
+          assert env.stat().st_mode & 0o777 == 0o600
+          PY
+          cp .env.mac /tmp/mac-env-before
+          sh scripts/mac_server.sh init
+          cmp .env.mac /tmp/mac-env-before
+      - name: Diagnostics
+        if: failure()
+        run: sh scripts/mac_server.sh logs
+      - name: Stop demo without deleting data
+        if: always()
+        run: sh scripts/mac_server.sh stop
+
   development-compose:
     runs-on: ubuntu-latest
     steps:

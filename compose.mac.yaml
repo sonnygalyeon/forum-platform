@@ -1,0 +1,122 @@
+# Temporary public demo, isolated from both development and production data.
+# Start with: sh scripts/mac_server.sh start
+x-mac-env: &mac-env
+  DJANGO_ALLOWED_HOSTS: ${APP_DOMAIN},api,localhost,127.0.0.1
+  CSRF_TRUSTED_ORIGINS: https://${APP_DOMAIN}
+  CORS_ALLOWED_ORIGINS: https://${APP_DOMAIN}
+  S3_PUBLIC_ENDPOINT: https://${MEDIA_DOMAIN}
+  S3_CORS_ALLOWED_ORIGINS: https://${APP_DOMAIN}
+
+services:
+  db:
+    extends: {file: compose.prod.yaml, service: db}
+
+  redis:
+    extends: {file: compose.prod.yaml, service: redis}
+
+  migrate:
+    extends: {file: compose.prod.yaml, service: migrate}
+    environment: *mac-env
+    depends_on:
+      minio-init:
+        condition: service_completed_successfully
+
+  api:
+    extends: {file: compose.prod.yaml, service: api}
+    environment: *mac-env
+
+  worker:
+    extends: {file: compose.prod.yaml, service: worker}
+    environment: *mac-env
+
+  beat:
+    extends: {file: compose.prod.yaml, service: beat}
+    environment: *mac-env
+
+  frontend:
+    extends: {file: compose.prod.yaml, service: frontend}
+
+  # The pinned local test storage stays private. Only presigned object requests
+  # pass the media gateway; console, bucket listing and admin API are blocked.
+  # Production continues to use a maintained external S3 provider.
+  minio:
+    image: night-iris-minio:RELEASE.2025-09-07T16-13-09Z
+    build:
+      context: .
+      dockerfile: deploy/minio/Dockerfile.server
+    command: server /data --console-address ":9001"
+    restart: unless-stopped
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+      MINIO_API_CORS_ALLOW_ORIGIN: https://${APP_DOMAIN}
+      MINIO_BROWSER: "off"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1:9000/minio/health/live >/dev/null"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  minio-init:
+    image: night-iris-minio-mc:RELEASE.2025-08-13T08-35-41Z
+    build:
+      context: .
+      dockerfile: deploy/minio/Dockerfile.mc
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY}
+      S3_SECRET_KEY: ${S3_SECRET_KEY}
+      S3_BUCKET: ${S3_BUCKET}
+    volumes:
+      - ./deploy/minio/init.sh:/init.sh:ro
+    entrypoint: ["/bin/sh", "/init.sh"]
+    depends_on:
+      minio:
+        condition: service_healthy
+    restart: "no"
+
+  gateway:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN}
+      MEDIA_DOMAIN: ${MEDIA_DOMAIN}
+      S3_BUCKET: ${S3_BUCKET}
+    volumes:
+      - ./deploy/caddy/Caddyfile.mac:/etc/caddy/Caddyfile:ro
+    ports:
+      - "127.0.0.1:9080:8080"
+      - "127.0.0.1:9081:8081"
+    depends_on:
+      api:
+        condition: service_healthy
+      frontend:
+        condition: service_healthy
+
+  tunnel-app:
+    image: cloudflare/cloudflared:2026.9.3
+    profiles: ["tunnels"]
+    command: ["tunnel", "--no-autoupdate", "--protocol", "http2", "--url", "http://gateway:8080"]
+    # A process restart can assign a different hostname. Restart only through
+    # mac_server.sh, which updates hosts, CORS and signatures together.
+    restart: "no"
+    logging:
+      driver: json-file
+      options: {max-size: "5m", max-file: "2"}
+
+  tunnel-media:
+    image: cloudflare/cloudflared:2026.9.3
+    profiles: ["tunnels"]
+    command: ["tunnel", "--no-autoupdate", "--protocol", "http2", "--url", "http://gateway:8081"]
+    restart: "no"
+    logging:
+      driver: json-file
+      options: {max-size: "5m", max-file: "2"}
+
+volumes:
+  postgres_data:
+  redis_data:
+  minio_data:

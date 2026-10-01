@@ -1,0 +1,65 @@
+{
+    admin off
+    auto_https off
+}
+
+# HTTPS terminates at the tunnel. These listeners are exposed only on Mac's
+# loopback interface. Never bind them to a public network interface.
+:8080 {
+    @app host {$APP_DOMAIN}
+    handle @app {
+        header {
+            -Server
+            X-Content-Type-Options "nosniff"
+            X-Frame-Options "DENY"
+            Referrer-Policy "strict-origin-when-cross-origin"
+            Permissions-Policy "camera=(), microphone=(self), geolocation=(), payment=(), usb=()"
+            Strict-Transport-Security "max-age=86400"
+            X-Robots-Tag "noindex, nofollow, noarchive"
+            Content-Security-Policy "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; img-src 'self' data: blob: https:; media-src 'self' blob: https:; font-src 'self' data:; connect-src 'self' https: wss:; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; report-uri /api/v1/csp-report/"
+        }
+
+        @plain header X-Forwarded-Proto http
+        redir @plain https://{$APP_DOMAIN}{uri} 308
+
+        @django path /ws/* /api/v1/* /static/*
+        reverse_proxy @django api:8000 {
+            header_up X-Forwarded-Proto https
+            header_up X-Forwarded-Host {$APP_DOMAIN}
+        }
+
+        reverse_proxy frontend:3000 {
+            header_up X-Forwarded-Proto https
+            header_up X-Forwarded-Host {$APP_DOMAIN}
+        }
+    }
+    respond "Unknown host" 421
+}
+
+:8081 {
+    @object {
+        host {$MEDIA_DOMAIN}
+        path /{$S3_BUCKET}/uploads/*
+        method GET HEAD PUT OPTIONS
+    }
+    handle @object {
+        # The application uses 16 MiB parts in this demo configuration.
+        request_body {
+            max_size 20MB
+        }
+        header {
+            -Server
+            -Set-Cookie
+            X-Content-Type-Options "nosniff"
+            Content-Security-Policy "sandbox; default-src 'none'"
+            Cache-Control "private, no-store"
+            X-Robots-Tag "noindex, nofollow, noarchive"
+        }
+        reverse_proxy minio:9000 {
+            # Preserve Host and the complete URI: both participate in S3
+            # signatures. No rewrites or path stripping are allowed here.
+            header_up -Cookie
+        }
+    }
+    respond "Not found" 404
+}
